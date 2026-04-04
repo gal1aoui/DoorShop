@@ -1,55 +1,64 @@
 "use client";
 import { createTheme } from "@mui/material/styles";
 
-const sharedTypography = {
-  fontFamily:
-    '"Segoe UI", "Roboto", "Helvetica Neue", Arial, "Noto Sans", sans-serif',
-};
-
 export const lightTheme = createTheme({
   palette: {
     mode: "light",
     primary: {
-      main: "#1565c0",
-      light: "#5e92f3",
-      dark: "#003c8f",
-      contrastText: "#ffffff",
+      main: "#5d5e61",
+      light: "#8a8b8f",
+      dark: "#515255",
+      contrastText: "#f7f7fa",
     },
     secondary: {
-      main: "#0288d1",
-      light: "#5eb8ff",
-      dark: "#005b9f",
-      contrastText: "#ffffff",
+      main: "#5b6065",
+      light: "#8a8f94",
+      dark: "#4f5458",
+      contrastText: "#f5f9ff",
     },
     background: {
-      default: "#eef5ff",
+      default: "#f9f9fb",
       paper: "#ffffff",
     },
+    text: {
+      primary: "#2d3338",
+      secondary: "#596066",
+    },
   },
-  typography: sharedTypography,
+  typography: {
+    fontFamily:
+      '"Segoe UI", "Roboto", "Helvetica Neue", Arial, "Noto Sans", sans-serif',
+  },
 });
 
 export const darkTheme = createTheme({
   palette: {
     mode: "dark",
     primary: {
-      main: "#64b5f6",
-      light: "#9be7ff",
-      dark: "#2286c3",
-      contrastText: "#001a33",
+      main: "#8a8b8f",
+      light: "#b8bbc0",
+      dark: "#5d5e61",
+      contrastText: "#0b1a2b",
     },
     secondary: {
-      main: "#4fc3f7",
-      light: "#8bf6ff",
-      dark: "#0093c4",
-      contrastText: "#00202d",
+      main: "#8a8f94",
+      light: "#b8bfc5",
+      dark: "#5b6065",
+      contrastText: "#0b1a2b",
     },
     background: {
       default: "#0b1a2b",
       paper: "#10253d",
     },
+    text: {
+      primary: "#e6f1ff",
+      secondary: "#a8b8c5",
+    },
   },
-  typography: sharedTypography,
+  typography: {
+    fontFamily:
+      '"Segoe UI", "Roboto", "Helvetica Neue", Arial, "Noto Sans", sans-serif',
+  },
 });
 
 const theme = lightTheme;

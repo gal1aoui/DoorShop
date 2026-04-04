@@ -1,5 +1,7 @@
 "use client";
 
+import EmailIcon from "@mui/icons-material/Email";
+import LockIcon from "@mui/icons-material/Lock";
 import LoginIcon from "@mui/icons-material/Login";
 import {
   Alert,
@@ -8,6 +10,7 @@ import {
   Card,
   CardContent,
   Container,
+  InputAdornment,
   Stack,
   TextField,
   Typography,
@@ -76,6 +79,15 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailIcon sx={{ fontSize: "1.25rem" }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
               <TextField
                 label="Password"
@@ -83,6 +95,15 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockIcon sx={{ fontSize: "1.25rem" }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
               {errorMessage ? (
                 <Alert severity="error">{errorMessage}</Alert>

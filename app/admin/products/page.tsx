@@ -1,8 +1,15 @@
 "use client";
 
 import AddIcon from "@mui/icons-material/Add";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import CategoryIcon from "@mui/icons-material/Category";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DescriptionIcon from "@mui/icons-material/Description";
+import HeightIcon from "@mui/icons-material/Height";
+import LinkIcon from "@mui/icons-material/Link";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import SaveIcon from "@mui/icons-material/Save";
+import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import {
   Alert,
   Box,
@@ -11,15 +18,13 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Container,
+  InputAdornment,
   MenuItem,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
-import AdminGuard from "@/components/admin/admin-guard";
-import AdminNav from "@/components/admin/admin-nav";
 import SupabaseConfigAlert from "@/components/supabase-config-alert";
 import {
   createDoorCategory,
@@ -248,49 +253,105 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <AdminGuard>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <AdminNav />
-        {!supabaseConfigured ? <SupabaseConfigAlert /> : null}
+    <>
+      {!supabaseConfigured ? <SupabaseConfigAlert /> : null}
 
-        {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
-        {successMessage ? (
-          <Alert severity="success">{successMessage}</Alert>
-        ) : null}
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Typography
+          variant="h4"
+          sx={{
+            fontFamily: '"Manrope", sans-serif',
+            fontWeight: 800,
+            mb: 1,
+            color: "var(--on-surface)",
+          }}
+        >
+          Catalog Management
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "var(--on-surface-variant)",
+            fontSize: "0.875rem",
+          }}
+        >
+          Create categories, add products, set pricing, configure delivery
+          tiers, and upload images.
+        </Typography>
+      </Box>
 
-        {isLoading ? (
-          <Box
-            sx={{
-              minHeight: 220,
-              display: "grid",
-              placeItems: "center",
-              mt: 2,
-            }}
+      {errorMessage ? (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {errorMessage}
+        </Alert>
+      ) : null}
+      {successMessage ? (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          {successMessage}
+        </Alert>
+      ) : null}
+
+      {isLoading ? (
+        <Box
+          sx={{
+            minHeight: 400,
+            display: "grid",
+            placeItems: "center",
+            mt: 2,
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      ) : null}
+
+      {!isLoading && (
+        <Stack spacing={4}>
+          {/* Category Section */}
+          <Card
+            variant="outlined"
+            sx={{ borderColor: "var(--outline-variant)" }}
           >
-            <CircularProgress />
-          </Box>
-        ) : null}
-
-        <Stack spacing={2} sx={{ mt: 2 }}>
-          <Card variant="outlined">
             <CardContent>
               <Stack
                 component="form"
-                spacing={1.5}
+                spacing={2}
                 onSubmit={handleCreateCategory}
               >
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  Add Category
-                </Typography>
+                <Box>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontFamily: '"Manrope", sans-serif',
+                      fontWeight: 700,
+                      mb: 0.5,
+                    }}
+                  >
+                    Create Category
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "var(--on-surface-variant)",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    Add a new product category to organize your catalog
+                  </Typography>
+                </Box>
+
                 <Box
                   sx={{
                     display: "grid",
-                    gap: 1,
-                    gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 2fr auto" },
+                    gap: 2,
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      md: "repeat(3, 1fr) auto",
+                    },
                   }}
                 >
                   <TextField
-                    label="Name"
+                    label="Category Name"
                     value={categoryName}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -300,6 +361,17 @@ export default function AdminProductsPage() {
                       }
                     }}
                     required
+                    size="small"
+                    variant="outlined"
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CategoryIcon sx={{ fontSize: "1.25rem" }} />
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
                   />
                   <TextField
                     label="Slug"
@@ -308,6 +380,17 @@ export default function AdminProductsPage() {
                       setCategorySlug(toSlug(event.target.value))
                     }
                     required
+                    size="small"
+                    variant="outlined"
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LinkIcon sx={{ fontSize: "1.25rem" }} />
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
                   />
                   <TextField
                     label="Description"
@@ -315,34 +398,71 @@ export default function AdminProductsPage() {
                     onChange={(event) =>
                       setCategoryDescription(event.target.value)
                     }
+                    size="small"
+                    variant="outlined"
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <DescriptionIcon sx={{ fontSize: "1.25rem" }} />
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
                   />
                   <Button
                     type="submit"
                     variant="contained"
                     startIcon={<SaveIcon />}
                     disabled={isSubmitting}
+                    sx={{ alignSelf: "flex-end" }}
                   >
-                    Save
+                    Create
                   </Button>
                 </Box>
               </Stack>
             </CardContent>
           </Card>
 
-          <Card variant="outlined">
+          {/* Product Section */}
+          <Card
+            variant="outlined"
+            sx={{ borderColor: "var(--outline-variant)" }}
+          >
             <CardContent>
               <Stack
                 component="form"
-                spacing={1.5}
+                spacing={2.5}
                 onSubmit={handleCreateProduct}
               >
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  Add Product
-                </Typography>
+                <Box>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontFamily: '"Manrope", sans-serif',
+                      fontWeight: 700,
+                      mb: 0.5,
+                    }}
+                  >
+                    Add Product
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "var(--on-surface-variant)",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    Create a new door product with pricing and delivery
+                    configuration
+                  </Typography>
+                </Box>
+
+                {/* Product Details Grid */}
                 <Box
                   sx={{
                     display: "grid",
-                    gap: 1,
+                    gap: 2,
                     gridTemplateColumns: {
                       xs: "1fr",
                       md: "repeat(3, minmax(0, 1fr))",
@@ -357,6 +477,8 @@ export default function AdminProductsPage() {
                       setProductCategoryId(event.target.value)
                     }
                     required
+                    size="small"
+                    variant="outlined"
                   >
                     {categories.map((category) => (
                       <MenuItem key={category.id} value={category.id}>
@@ -365,7 +487,7 @@ export default function AdminProductsPage() {
                     ))}
                   </TextField>
                   <TextField
-                    label="Name"
+                    label="Product Name"
                     value={productName}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -375,6 +497,17 @@ export default function AdminProductsPage() {
                       }
                     }}
                     required
+                    size="small"
+                    variant="outlined"
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <ShoppingBagIcon sx={{ fontSize: "1.25rem" }} />
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
                   />
                   <TextField
                     label="Slug"
@@ -383,104 +516,284 @@ export default function AdminProductsPage() {
                       setProductSlug(toSlug(event.target.value))
                     }
                     required
-                  />
-                  <TextField
-                    label="Base price"
-                    type="number"
-                    value={basePrice}
-                    onChange={(event) => setBasePrice(event.target.value)}
-                    required
-                  />
-                  <TextField
-                    label="Base height (cm)"
-                    type="number"
-                    value={baseHeightCm}
-                    onChange={(event) => setBaseHeightCm(event.target.value)}
-                    required
-                  />
-                  <TextField
-                    label="Base width (cm)"
-                    type="number"
-                    value={baseWidthCm}
-                    onChange={(event) => setBaseWidthCm(event.target.value)}
-                    required
-                  />
-                  <TextField
-                    label="Extra price per cm height"
-                    type="number"
-                    value={extraHeightPrice}
-                    onChange={(event) =>
-                      setExtraHeightPrice(event.target.value)
-                    }
-                    required
-                  />
-                  <TextField
-                    label="Extra price per cm width"
-                    type="number"
-                    value={extraWidthPrice}
-                    onChange={(event) => setExtraWidthPrice(event.target.value)}
-                    required
-                  />
-                  <TextField
-                    label="Description"
-                    value={productDescription}
-                    onChange={(event) =>
-                      setProductDescription(event.target.value)
-                    }
-                    multiline
-                    minRows={2}
-                    sx={{ gridColumn: { xs: "auto", md: "1 / -1" } }}
+                    size="small"
+                    variant="outlined"
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LinkIcon sx={{ fontSize: "1.25rem" }} />
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
                   />
                 </Box>
 
-                <Stack spacing={1}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    Product images (multiple upload)
+                {/* Pricing Grid */}
+                <Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                      color: "var(--on-surface-variant)",
+                      mb: 1.5,
+                    }}
+                  >
+                    Pricing
                   </Typography>
-                  <Button variant="outlined" component="label">
-                    Select images
-                    <input
-                      hidden
-                      multiple
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => {
-                        addProductImageFiles(event.target.files);
-                        event.target.value = "";
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gap: 2,
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        md: "repeat(2, minmax(0, 1fr))",
+                      },
+                    }}
+                  >
+                    <TextField
+                      label="Base Price"
+                      type="number"
+                      value={basePrice}
+                      onChange={(event) => setBasePrice(event.target.value)}
+                      required
+                      size="small"
+                      variant="outlined"
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <AttachMoneyIcon sx={{ fontSize: "1.25rem" }} />
+                            </InputAdornment>
+                          ),
+                        },
                       }}
                     />
-                  </Button>
-                  <Typography variant="caption" color="text.secondary">
-                    Up to 12 images, displayed as swipeable timed carousel.
-                  </Typography>
-                  {productImageFiles.length ? (
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      flexWrap="wrap"
-                      useFlexGap
-                    >
-                      {productImageFiles.map((file, index) => (
-                        <Chip
-                          key={`${file.name}-${index}`}
-                          label={file.name}
-                          onDelete={() =>
-                            removeProductImageFile(file.name, index)
-                          }
-                        />
-                      ))}
-                    </Stack>
-                  ) : null}
-                </Stack>
+                    <TextField
+                      label="Price per cm (Height)"
+                      type="number"
+                      value={extraHeightPrice}
+                      onChange={(event) =>
+                        setExtraHeightPrice(event.target.value)
+                      }
+                      required
+                      size="small"
+                      variant="outlined"
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <AttachMoneyIcon sx={{ fontSize: "1.25rem" }} />
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                    <TextField
+                      label="Price per cm (Width)"
+                      type="number"
+                      value={extraWidthPrice}
+                      onChange={(event) =>
+                        setExtraWidthPrice(event.target.value)
+                      }
+                      required
+                      size="small"
+                      variant="outlined"
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <AttachMoneyIcon sx={{ fontSize: "1.25rem" }} />
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                  </Box>
+                </Box>
 
-                <Stack spacing={1}>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                      Delivery tiers (quantity to days)
+                {/* Dimensions Grid */}
+                <Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                      color: "var(--on-surface-variant)",
+                      mb: 1.5,
+                    }}
+                  >
+                    Default Dimensions
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gap: 2,
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        md: "repeat(2, minmax(0, 1fr))",
+                      },
+                    }}
+                  >
+                    <TextField
+                      label="Base Height (cm)"
+                      type="number"
+                      value={baseHeightCm}
+                      onChange={(event) => setBaseHeightCm(event.target.value)}
+                      required
+                      size="small"
+                      variant="outlined"
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <HeightIcon sx={{ fontSize: "1.25rem" }} />
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                    <TextField
+                      label="Base Width (cm)"
+                      type="number"
+                      value={baseWidthCm}
+                      onChange={(event) => setBaseWidthCm(event.target.value)}
+                      required
+                      size="small"
+                      variant="outlined"
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <HeightIcon
+                                sx={{ fontSize: "1.25rem", rotate: "90deg" }}
+                              />
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                  </Box>
+                </Box>
+
+                {/* Description */}
+                <TextField
+                  label="Description"
+                  value={productDescription}
+                  onChange={(event) =>
+                    setProductDescription(event.target.value)
+                  }
+                  multiline
+                  minRows={3}
+                  fullWidth
+                  size="small"
+                  variant="outlined"
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start" sx={{ mt: 2 }}>
+                          <DescriptionIcon sx={{ fontSize: "1.25rem" }} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+
+                {/* Images Section */}
+                <Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                      color: "var(--on-surface-variant)",
+                      mb: 1.5,
+                    }}
+                  >
+                    Product Images
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      fullWidth
+                      sx={{ py: 1.5 }}
+                    >
+                      Select Images (Up to 12)
+                      <input
+                        hidden
+                        multiple
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => {
+                          addProductImageFiles(event.target.files);
+                          event.target.value = "";
+                        }}
+                      />
+                    </Button>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "var(--on-surface-variant)" }}
+                    >
+                      Images will be displayed as a carousel on the product
+                      page.
                     </Typography>
+                    {productImageFiles.length > 0 && (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        {productImageFiles.map((file, index) => (
+                          <Chip
+                            key={`${file.name}-${index}`}
+                            label={file.name}
+                            onDelete={() =>
+                              removeProductImageFile(file.name, index)
+                            }
+                            variant="outlined"
+                            size="small"
+                          />
+                        ))}
+                      </Stack>
+                    )}
+                  </Stack>
+                </Box>
+
+                {/* Delivery Tiers Section */}
+                <Box>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    sx={{ mb: 1.5 }}
+                  >
+                    <Box>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontSize: "0.75rem",
+                          letterSpacing: "0.05em",
+                          textTransform: "uppercase",
+                          fontWeight: 600,
+                          color: "var(--on-surface-variant)",
+                        }}
+                      >
+                        Delivery Tiers
+                      </Typography>
+                    </Box>
                     <Button
                       startIcon={<AddIcon />}
                       size="small"
+                      variant="text"
                       onClick={() =>
                         setTiers((prev) => [
                           ...prev,
@@ -488,148 +801,236 @@ export default function AdminProductsPage() {
                         ])
                       }
                     >
-                      Add tier
+                      Add Tier
                     </Button>
                   </Stack>
 
-                  {tiers.map((tier) => (
-                    <Box
-                      key={tier.id}
-                      sx={{
-                        display: "grid",
-                        gap: 1,
-                        gridTemplateColumns: {
-                          xs: "1fr 1fr",
-                          md: "repeat(4, minmax(0, 1fr)) auto",
-                        },
-                        alignItems: "center",
-                      }}
-                    >
-                      <TextField
-                        label="Min qty"
-                        type="number"
-                        value={tier.min_quantity}
-                        onChange={(event) =>
-                          updateTier(
-                            tier.id,
-                            "min_quantity",
-                            Math.max(1, Number(event.target.value)),
-                          )
-                        }
-                      />
-                      <TextField
-                        label="Max qty (blank = no max)"
-                        type="number"
-                        value={tier.max_quantity ?? ""}
-                        onChange={(event) =>
-                          updateTier(
-                            tier.id,
-                            "max_quantity",
-                            event.target.value === ""
-                              ? null
-                              : Math.max(1, Number(event.target.value)),
-                          )
-                        }
-                      />
-                      <TextField
-                        label="Delivery days"
-                        type="number"
-                        value={tier.delivery_days}
-                        onChange={(event) =>
-                          updateTier(
-                            tier.id,
-                            "delivery_days",
-                            Math.max(1, Number(event.target.value)),
-                          )
-                        }
-                      />
-                      <Button
-                        color="error"
-                        onClick={() =>
-                          setTiers((prev) =>
-                            prev.length === 1
-                              ? prev
-                              : prev.filter((item) => item.id !== tier.id),
-                          )
-                        }
-                        startIcon={<DeleteIcon />}
+                  <Stack spacing={1.5}>
+                    {tiers.map((tier) => (
+                      <Box
+                        key={tier.id}
+                        sx={{
+                          display: "grid",
+                          gap: 1.5,
+                          gridTemplateColumns: {
+                            xs: "1fr 1fr",
+                            md: "repeat(4, minmax(0, 1fr)) auto",
+                          },
+                          alignItems: "flex-end",
+                          p: 2,
+                          backgroundColor: "var(--surface-container-low)",
+                          borderRadius: "0.5rem",
+                          border: "1px solid var(--outline-variant)",
+                        }}
                       >
-                        Remove
-                      </Button>
-                    </Box>
-                  ))}
-                </Stack>
+                        <TextField
+                          label="Min Qty"
+                          type="number"
+                          value={tier.min_quantity}
+                          onChange={(event) =>
+                            updateTier(
+                              tier.id,
+                              "min_quantity",
+                              Math.max(1, Number(event.target.value)),
+                            )
+                          }
+                          size="small"
+                          variant="outlined"
+                          slotProps={{
+                            input: {
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <AttachMoneyIcon
+                                    sx={{ fontSize: "1.25rem" }}
+                                  />
+                                </InputAdornment>
+                              ),
+                            },
+                          }}
+                        />
+                        <TextField
+                          label="Max Qty (leave blank for unlimited)"
+                          type="number"
+                          value={tier.max_quantity ?? ""}
+                          onChange={(event) =>
+                            updateTier(
+                              tier.id,
+                              "max_quantity",
+                              event.target.value === ""
+                                ? null
+                                : Math.max(1, Number(event.target.value)),
+                            )
+                          }
+                          size="small"
+                          variant="outlined"
+                          slotProps={{
+                            input: {
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <AttachMoneyIcon
+                                    sx={{ fontSize: "1.25rem" }}
+                                  />
+                                </InputAdornment>
+                              ),
+                            },
+                          }}
+                        />
+                        <TextField
+                          label="Delivery Days"
+                          type="number"
+                          value={tier.delivery_days}
+                          onChange={(event) =>
+                            updateTier(
+                              tier.id,
+                              "delivery_days",
+                              Math.max(1, Number(event.target.value)),
+                            )
+                          }
+                          size="small"
+                          variant="outlined"
+                          slotProps={{
+                            input: {
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <LocalShippingIcon
+                                    sx={{ fontSize: "1.25rem" }}
+                                  />
+                                </InputAdornment>
+                              ),
+                            },
+                          }}
+                        />
+                        <Button
+                          color="error"
+                          onClick={() =>
+                            setTiers((prev) =>
+                              prev.length === 1
+                                ? prev
+                                : prev.filter((item) => item.id !== tier.id),
+                            )
+                          }
+                          startIcon={<DeleteIcon />}
+                          size="small"
+                        >
+                          Remove
+                        </Button>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
 
                 <Button
                   type="submit"
                   variant="contained"
                   disabled={isSubmitting}
                   startIcon={<SaveIcon />}
+                  sx={{ py: 1.5 }}
                 >
-                  {isSubmitting ? "Saving..." : "Save product"}
+                  {isSubmitting ? "Creating..." : "Create Product"}
                 </Button>
               </Stack>
             </CardContent>
           </Card>
 
-          <Card variant="outlined">
+          {/* Existing Products Section */}
+          <Card
+            variant="outlined"
+            sx={{ borderColor: "var(--outline-variant)" }}
+          >
             <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-                Existing Products
+              <Typography
+                variant="h6"
+                sx={{
+                  fontFamily: '"Manrope", sans-serif',
+                  fontWeight: 700,
+                  mb: 2,
+                }}
+              >
+                Existing Products ({products.length})
               </Typography>
-              <Stack spacing={1}>
-                {products.map((product) => (
-                  <Box
-                    key={product.id}
-                    sx={{
-                      border: "1px solid",
-                      borderColor: "divider",
-                      borderRadius: 2,
-                      p: 1.5,
-                    }}
+              <Stack spacing={2}>
+                {products.length === 0 ? (
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "var(--on-surface-variant)" }}
                   >
-                    <Typography sx={{ fontWeight: 700 }}>
-                      {product.name} ({product.slug})
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Category: {product.door_categories?.name ?? "Unknown"}
-                    </Typography>
-                    <Typography variant="body2">
-                      Base: {formatMoney(product.base_price)} at{" "}
-                      {product.base_height_cm}cm x {product.base_width_cm}cm
-                    </Typography>
-                    <Typography variant="body2">
-                      Extra height:{" "}
-                      {formatMoney(product.price_per_extra_cm_height)} / cm,
-                      extra width:{" "}
-                      {formatMoney(product.price_per_extra_cm_width)} / cm
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Images: {product.door_product_images?.length ?? 0}
-                    </Typography>
-                    <Stack spacing={0.5} sx={{ mt: 1 }}>
-                      {(
-                        (product.door_delivery_tiers ??
-                          []) as DoorDeliveryTier[]
-                      ).map((tier) => (
+                    No products created yet.
+                  </Typography>
+                ) : (
+                  products.map((product) => (
+                    <Box
+                      key={product.id}
+                      sx={{
+                        border: "1px solid",
+                        borderColor: "var(--outline-variant)",
+                        borderRadius: "0.5rem",
+                        p: 2,
+                        backgroundColor: "var(--surface-container-lowest)",
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontWeight: 700,
+                          color: "var(--on-surface)",
+                          mb: 0.5,
+                        }}
+                      >
+                        {product.name}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "var(--on-surface-variant)",
+                          display: "block",
+                          mb: 1,
+                        }}
+                      >
+                        {product.slug}
+                      </Typography>
+                      <Stack spacing={0.75}>
                         <Typography
-                          key={tier.id}
-                          variant="caption"
-                          color="text.secondary"
+                          variant="body2"
+                          sx={{ fontSize: "0.8125rem" }}
                         >
-                          Qty {tier.min_quantity} to{" "}
-                          {tier.max_quantity ?? "no max"}: {tier.delivery_days}{" "}
-                          day(s)
+                          Category: {product.door_categories?.name ?? "Unknown"}
                         </Typography>
-                      ))}
-                    </Stack>
-                  </Box>
-                ))}
+                        <Typography
+                          variant="body2"
+                          sx={{ fontSize: "0.8125rem" }}
+                        >
+                          Base: {formatMoney(product.base_price)} at{" "}
+                          {product.base_height_cm}cm × {product.base_width_cm}cm
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontSize: "0.8125rem" }}
+                        >
+                          Extra:{" "}
+                          {formatMoney(product.price_per_extra_cm_height)}/cm
+                          (H), {formatMoney(product.price_per_extra_cm_width)}
+                          /cm (W)
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontSize: "0.8125rem",
+                            color: "var(--on-surface-variant)",
+                          }}
+                        >
+                          Images: {product.door_product_images?.length ?? 0} |
+                          Delivery tiers:{" "}
+                          {(product.door_delivery_tiers as DoorDeliveryTier[])
+                            ?.length ?? 0}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  ))
+                )}
               </Stack>
             </CardContent>
           </Card>
         </Stack>
-      </Container>
-    </AdminGuard>
+      )}
+    </>
   );
 }

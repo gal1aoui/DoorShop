@@ -1,6 +1,7 @@
 "use client";
 
 import RefreshIcon from "@mui/icons-material/Refresh";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import {
   Alert,
   Box,
@@ -8,13 +9,12 @@ import {
   Card,
   CardContent,
   CircularProgress,
-  Container,
+  Grid,
+  LinearProgress,
   Stack,
   Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import AdminGuard from "@/components/admin/admin-guard";
-import AdminNav from "@/components/admin/admin-nav";
 import SupabaseConfigAlert from "@/components/supabase-config-alert";
 import { fetchAnalyticsOrders } from "@/services/admin/analytics.service";
 import { isSupabaseConfigured } from "@/services/supabase/client";
@@ -102,121 +102,425 @@ export default function AdminAnalyticsPage() {
   }, [orders]);
 
   return (
-    <AdminGuard>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <AdminNav />
-        {!supabaseConfigured ? <SupabaseConfigAlert /> : null}
+    <>
+      {!supabaseConfigured ? <SupabaseConfigAlert /> : null}
 
-        <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={() => void fetchAnalytics()}
+      {/* Header */}
+      <Box
+        sx={{
+          mb: 4,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box>
+          <Typography
+            variant="h4"
+            sx={{
+              fontFamily: '"Manrope", sans-serif',
+              fontWeight: 800,
+              mb: 1,
+              color: "var(--on-surface)",
+            }}
           >
-            Refresh
-          </Button>
-        </Stack>
+            Analytics Dashboard
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "var(--on-surface-variant)",
+              fontSize: "0.875rem",
+            }}
+          >
+            Real-time insights into sales performance, product trends, and
+            production metrics.
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          startIcon={<RefreshIcon />}
+          onClick={() => void fetchAnalytics()}
+        >
+          Refresh
+        </Button>
+      </Box>
 
-        {isLoading ? (
-          <Box sx={{ minHeight: 220, display: "grid", placeItems: "center" }}>
-            <CircularProgress />
-          </Box>
-        ) : null}
+      {/* Loading State */}
+      {isLoading ? (
+        <Box sx={{ minHeight: 400, display: "grid", placeItems: "center" }}>
+          <CircularProgress />
+        </Box>
+      ) : null}
 
-        {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
+      {/* Error Alert */}
+      {errorMessage ? (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {errorMessage}
+        </Alert>
+      ) : null}
 
-        {!isLoading ? (
-          <Stack spacing={2}>
-            <Box
-              sx={{
-                display: "grid",
-                gap: 2,
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  sm: "repeat(2, minmax(0, 1fr))",
-                  lg: "repeat(3, minmax(0, 1fr))",
-                },
-              }}
-            >
-              <Card variant="outlined">
+      {!isLoading ? (
+        <Stack spacing={4}>
+          {/* KPI Grid */}
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card
+                variant="outlined"
+                sx={{
+                  borderColor: "var(--outline-variant)",
+                  backgroundColor: "var(--surface-container-low)",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
                 <CardContent>
-                  <Typography color="text.secondary">Total Orders</Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                    {totals.totalOrders}
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    Total Revenue
                   </Typography>
-                </CardContent>
-              </Card>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography color="text.secondary">Units Sold</Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                    {totals.totalUnits}
-                  </Typography>
-                </CardContent>
-              </Card>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography color="text.secondary">Total Revenue</Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 800 }}>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontFamily: '"Manrope", sans-serif',
+                      fontWeight: 800,
+                      my: 1.5,
+                      color: "var(--primary)",
+                    }}
+                  >
                     {formatMoney(totals.totalRevenue)}
                   </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <TrendingUpIcon
+                      sx={{
+                        fontSize: "16px",
+                        color: "var(--success)",
+                      }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "var(--on-surface-variant)",
+                      }}
+                    >
+                      From {totals.totalOrders} orders
+                    </Typography>
+                  </Box>
                 </CardContent>
               </Card>
-            </Box>
+            </Grid>
 
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-                  Order Status Breakdown
-                </Typography>
-                <Stack spacing={0.75}>
-                  {ORDER_STATUSES.map((status) => (
-                    <Typography key={status} variant="body2">
-                      {ORDER_STATUS_LABELS[status]}:{" "}
-                      {totals.statusBreakdown[status]}
-                    </Typography>
-                  ))}
-                </Stack>
-              </CardContent>
-            </Card>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card
+                variant="outlined"
+                sx={{
+                  borderColor: "var(--outline-variant)",
+                  backgroundColor: "var(--surface-container-low)",
+                }}
+              >
+                <CardContent>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    Doors Produced
+                  </Typography>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontFamily: '"Manrope", sans-serif',
+                      fontWeight: 800,
+                      my: 1.5,
+                      color: "var(--tertiary)",
+                    }}
+                  >
+                    {totals.totalUnits}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    Custom units manufactured
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
 
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-                  Top Selling Products
-                </Typography>
-                <Stack spacing={1}>
-                  {totals.topProducts.length ? (
-                    totals.topProducts.map((product) => (
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card
+                variant="outlined"
+                sx={{
+                  borderColor: "var(--outline-variant)",
+                  backgroundColor: "var(--surface-container-low)",
+                }}
+              >
+                <CardContent>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    Active Orders
+                  </Typography>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontFamily: '"Manrope", sans-serif',
+                      fontWeight: 800,
+                      my: 1.5,
+                      color: "var(--warning)",
+                    }}
+                  >
+                    {totals.statusBreakdown.constructing +
+                      totals.statusBreakdown.delivering}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    In production or transit
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card
+                variant="outlined"
+                sx={{
+                  borderColor: "var(--outline-variant)",
+                  backgroundColor: "var(--surface-container-low)",
+                }}
+              >
+                <CardContent>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    Completion Rate
+                  </Typography>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontFamily: '"Manrope", sans-serif',
+                      fontWeight: 800,
+                      my: 1.5,
+                      color: "var(--success)",
+                    }}
+                  >
+                    {totals.totalOrders > 0
+                      ? Math.round(
+                          (totals.statusBreakdown.delivered /
+                            totals.totalOrders) *
+                            100,
+                        )
+                      : 0}
+                    %
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    {totals.statusBreakdown.delivered} delivered
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Status Breakdown */}
+          <Card
+            variant="outlined"
+            sx={{ borderColor: "var(--outline-variant)" }}
+          >
+            <CardContent>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontFamily: '"Manrope", sans-serif',
+                  fontWeight: 700,
+                  mb: 3,
+                  fontSize: "1rem",
+                }}
+              >
+                Order Status Distribution
+              </Typography>
+
+              <Stack spacing={2.5}>
+                {ORDER_STATUSES.map((status) => {
+                  const count = totals.statusBreakdown[status];
+                  const percentage =
+                    totals.totalOrders > 0
+                      ? Math.round((count / totals.totalOrders) * 100)
+                      : 0;
+
+                  let statusColor = "var(--outline)";
+                  if (status === "received" || status === "confirmed")
+                    statusColor = "var(--warning)";
+                  if (status === "constructing")
+                    statusColor = "var(--tertiary)";
+                  if (status === "delivering") statusColor = "var(--warning)";
+                  if (status === "delivered") statusColor = "var(--success)";
+
+                  return (
+                    <Box key={status}>
                       <Box
-                        key={product.name}
                         sx={{
                           display: "flex",
                           justifyContent: "space-between",
-                          borderBottom: "1px solid",
-                          borderColor: "divider",
-                          pb: 1,
-                          "&:last-child": { borderBottom: "none", pb: 0 },
+                          mb: 1,
                         }}
                       >
-                        <Typography>{product.name}</Typography>
-                        <Typography>
-                          {product.quantity} units |{" "}
-                          {formatMoney(product.revenue)}
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: "var(--on-surface)",
+                          }}
+                        >
+                          {ORDER_STATUS_LABELS[status]}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 700,
+                            color: "var(--on-surface-variant)",
+                          }}
+                        >
+                          {count} ({percentage}%)
                         </Typography>
                       </Box>
-                    ))
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No sales data yet.
-                    </Typography>
-                  )}
+                      <LinearProgress
+                        variant="determinate"
+                        value={percentage}
+                        sx={{
+                          height: "8px",
+                          borderRadius: "4px",
+                          backgroundColor: "var(--surface-container-high)",
+                          "& .MuiLinearProgress-bar": {
+                            backgroundColor: statusColor,
+                            borderRadius: "4px",
+                          },
+                        }}
+                      />
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </CardContent>
+          </Card>
+
+          {/* Top Products */}
+          <Card
+            variant="outlined"
+            sx={{ borderColor: "var(--outline-variant)" }}
+          >
+            <CardContent>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontFamily: '"Manrope", sans-serif',
+                  fontWeight: 700,
+                  mb: 2,
+                  fontSize: "1rem",
+                }}
+              >
+                Top Selling Products
+              </Typography>
+
+              {totals.topProducts.length > 0 ? (
+                <Stack spacing={2}>
+                  {totals.topProducts.map((product, index) => (
+                    <Box
+                      key={product.name}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        p: 2,
+                        backgroundColor:
+                          index === 0
+                            ? "var(--surface-container-high)"
+                            : "transparent",
+                        borderRadius: "0.5rem",
+                        borderLeft:
+                          index === 0
+                            ? "3px solid var(--primary)"
+                            : "3px solid transparent",
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 700,
+                            color: "var(--on-surface)",
+                          }}
+                        >
+                          {index + 1}. {product.name}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "var(--on-surface-variant)",
+                          }}
+                        >
+                          {product.quantity} units sold
+                        </Typography>
+                      </Box>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontFamily: '"Manrope", sans-serif',
+                          fontWeight: 800,
+                          color: "var(--primary)",
+                        }}
+                      >
+                        {formatMoney(product.revenue)}
+                      </Typography>
+                    </Box>
+                  ))}
                 </Stack>
-              </CardContent>
-            </Card>
-          </Stack>
-        ) : null}
-      </Container>
-    </AdminGuard>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No sales data yet.
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Stack>
+      ) : null}
+    </>
   );
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
-
+import SiteFooter from "@/components/site-footer";
 import SiteHeader from "@/components/site-header";
 import AppThemeProvider from "./app-theme-provider";
 
@@ -22,7 +22,8 @@ export default function RootLayout({
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <AppThemeProvider>
             <SiteHeader />
-            <main style={{ flex: 1 }}>{children}</main>
+            <main style={{ flex: 1, paddingTop: "64px" }}>{children}</main>
+            <SiteFooter />
           </AppThemeProvider>
         </AppRouterCacheProvider>
       </body>
