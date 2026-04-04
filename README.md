@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Boudokhane Doors
 
-## Getting Started
+Door selling app with:
 
-First, run the development server:
+- Public catalog (no login)
+- Custom-size ordering (height/width in cm)
+- Multi-image products with animated swipeable carousel
+- Secure tracking link per order
+- Admin console (login required) for products, order management, and analytics
+- Supabase realtime updates for new/updated orders
+
+## Stack
+
+- Next.js 16 (App Router)
+- React 19 + TypeScript
+- MUI + Emotion
+- Supabase (Postgres, Auth, Realtime, RPC)
+- Biome (lint/format)
+
+## Code structure
+
+- `services/`: all Supabase and API calls
+- `types/`: shared domain/database/service typings
+- `utils/`: pure helpers (formatters, pricing, status helpers)
+- `proxy.ts`: route protection for `/admin/*` (non-admin users are redirected)
+
+## Environment
+
+Create a `.env.local` file:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Database setup (Supabase SQL editor)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run files in this exact order:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. `supabase/schemas/00_extensions.sql`
+2. `supabase/schemas/10_tables.sql`
+3. `supabase/policies/10_rls_policies.sql`
+4. `supabase/triggers/10_functions_and_triggers.sql`
+5. `supabase/seeds/00_seed_admin.sql`
+6. `supabase/seeds/10_seed_catalog.sql`
+7. `supabase/seeds/20_seed_orders.sql`
 
-## Learn More
+Default seeded admin:
 
-To learn more about Next.js, take a look at the following resources:
+- Email: `admin@admin.com`
+- Password: `a123456A`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Run locally
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install
+npm run dev
+```
 
-## Deploy on Vercel
+Open `http://localhost:3000`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Key routes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/` catalog with category + price filters
+- `/products/[productId]` product details and order placement
+- `/track` track-token lookup
+- `/track/[token]` order status/details page
+- `/admin/login` admin sign in
+- `/admin/orders` admin realtime order management + status updates
+- `/admin/products` admin product/category/delivery-tier creation
+- `/admin/analytics` sales and order stats
