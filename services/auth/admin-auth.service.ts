@@ -1,4 +1,7 @@
-import { getSupabaseClient } from "@/services/supabase/client";
+import {
+  getSupabaseClient,
+  persistAccessTokenCookie,
+} from "@/services/supabase/client";
 import { fail, ok, type ServiceResult } from "@/types/service";
 
 export interface AdminSessionAccess {
@@ -30,8 +33,11 @@ export async function signInAsAdmin(
 
   if (adminError || !adminRow) {
     await supabase.auth.signOut();
+    persistAccessTokenCookie(null);
     return fail("This account is not an admin account.");
   }
+
+  persistAccessTokenCookie(loginData.session?.access_token ?? null);
 
   return ok({ userId: loginData.user.id });
 }
@@ -75,4 +81,5 @@ export async function getCurrentAdminAccess(): Promise<
 
 export async function signOutAdmin(): Promise<void> {
   await getSupabaseClient().auth.signOut();
+  persistAccessTokenCookie(null);
 }

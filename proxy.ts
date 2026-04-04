@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 const ADMIN_LOGIN_PATH = "/admin/login";
+const ADMIN_ACCESS_COOKIE = "door-admin-access-token";
 
 function decodeBase64Url(value: string): string {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
@@ -53,6 +54,11 @@ function parseAccessTokenFromCookie(rawCookie: string): string | null {
 }
 
 function getAccessTokenFromRequest(request: NextRequest): string | null {
+  const directCookie = request.cookies.get(ADMIN_ACCESS_COOKIE)?.value;
+  if (directCookie) {
+    return decodeURIComponent(directCookie);
+  }
+
   const allCookies = request.cookies.getAll();
   const singleCookie = allCookies.find(
     (cookie) =>

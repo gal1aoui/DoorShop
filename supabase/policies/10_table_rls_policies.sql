@@ -1,21 +1,5 @@
 begin;
 
-create or replace function public.is_admin(p_user_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from public.admin_profiles ap
-    where ap.id = p_user_id
-  );
-$$;
-
-grant execute on function public.is_admin(uuid) to anon, authenticated;
-
 alter table public.admin_profiles enable row level security;
 alter table public.door_categories enable row level security;
 alter table public.door_products enable row level security;
@@ -156,46 +140,5 @@ for all
 to authenticated
 using (public.is_admin(auth.uid()))
 with check (public.is_admin(auth.uid()));
-
-drop policy if exists "Public can read door product images bucket" on storage.objects;
-create policy "Public can read door product images bucket"
-on storage.objects
-for select
-to anon, authenticated
-using (bucket_id = 'door-product-images');
-
-drop policy if exists "Admins can upload door product images" on storage.objects;
-create policy "Admins can upload door product images"
-on storage.objects
-for insert
-to authenticated
-with check (
-  bucket_id = 'door-product-images'
-  and public.is_admin(auth.uid())
-);
-
-drop policy if exists "Admins can update door product images" on storage.objects;
-create policy "Admins can update door product images"
-on storage.objects
-for update
-to authenticated
-using (
-  bucket_id = 'door-product-images'
-  and public.is_admin(auth.uid())
-)
-with check (
-  bucket_id = 'door-product-images'
-  and public.is_admin(auth.uid())
-);
-
-drop policy if exists "Admins can delete door product images" on storage.objects;
-create policy "Admins can delete door product images"
-on storage.objects
-for delete
-to authenticated
-using (
-  bucket_id = 'door-product-images'
-  and public.is_admin(auth.uid())
-);
 
 commit;

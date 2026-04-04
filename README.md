@@ -35,20 +35,18 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 ## Database setup (Supabase SQL editor)
 
-Run files in this exact order:
+Run this single file in Supabase SQL editor:
 
-1. `supabase/schemas/00_extensions.sql`
-2. `supabase/schemas/10_tables.sql`
-3. `supabase/policies/10_rls_policies.sql`
-4. `supabase/triggers/10_functions_and_triggers.sql`
-5. `supabase/seeds/00_seed_admin.sql`
-6. `supabase/seeds/10_seed_catalog.sql`
-7. `supabase/seeds/20_seed_orders.sql`
+1. `supabase/setup_all_in_one.sql`
 
-Default seeded admin:
+If you still prefer modular SQL files, use the order documented in `supabase/README.md`.
+
+Admin account:
 
 - Email: `admin@admin.com`
 - Password: `a123456A`
+
+Important: create this user first in Supabase Dashboard (`Authentication > Users`), then run SQL seeds. The seed now only grants admin role in `public.admin_profiles` for an existing auth user.
 
 ## Run locally
 
