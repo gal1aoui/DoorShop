@@ -77,26 +77,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Normalize and validate Vercel token
-        run: |
-          set -euo pipefail
-
-          # Guard against copy/paste issues (quotes/newlines) in GitHub secrets.
-          CLEAN_TOKEN="$(printf '%s' "${VERCEL_TOKEN}" \
-            | tr -d '\r\n' \
-            | sed -E "s/^[[:space:]\"']+//; s/[[:space:]\"']+$//")"
-
-          if [ -z "${CLEAN_TOKEN}" ]; then
-            echo "::error::VERCEL_TOKEN is empty after normalization."
-            exit 1
-          fi
-
-          echo "::add-mask::${CLEAN_TOKEN}"
-          echo "VERCEL_TOKEN=${CLEAN_TOKEN}" >> "${GITHUB_ENV}"
-
-          # Fails fast with a dedicated auth check before link/deploy.
-          npx vercel@latest whoami --token "${CLEAN_TOKEN}" >/dev/null
-
       - name: Resolve Vercel project name
         id: resolve_project
         run: |
@@ -107,7 +87,7 @@ jobs:
             REPO_NAME="${GITHUB_REPOSITORY##*/}"
             PROJECT_NAME="$(echo "${REPO_NAME}" \
               | tr '[:upper:]' '[:lower:]' \
-              | sed -E 's/[^a-z0-9._-]+/-/g; s/-+/-/g; s/^-+//; s/-+$//')"
+              | sed -E 's/[^a-z0-9._-]+/-/g; s/---+/-/g; s/^-+//; s/-+$//')"
             PROJECT_NAME="${PROJECT_NAME:0:100}"
           fi
 
