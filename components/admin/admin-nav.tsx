@@ -1,20 +1,44 @@
 "use client";
 
+import AnalyticsOutlinedIcon from "@mui/icons-material/AnalyticsOutlined";
+import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { Box, Button, Stack, Typography } from "@mui/material";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import {
+  Box,
+  Button,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Stack,
+  Typography,
+} from "@mui/material";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOutAdmin } from "@/services/auth/admin-auth.service";
 import { isSupabaseConfigured } from "@/services/supabase/client";
 
 const adminLinks = [
-  { href: "/admin", label: "Dashboard", icon: "📊" },
-  { href: "/admin/orders", label: "Orders", icon: "📋" },
-  { href: "/admin/products", label: "Products", icon: "📦" },
-  { href: "/admin/analytics", label: "Analytics", icon: "📈" },
+  { href: "/admin", label: "Dashboard", Icon: DashboardOutlinedIcon },
+  { href: "/admin/orders", label: "Orders", Icon: ReceiptLongOutlinedIcon },
+  { href: "/admin/products", label: "Products", Icon: Inventory2OutlinedIcon },
+  { href: "/admin/analytics", label: "Analytics", Icon: AnalyticsOutlinedIcon },
 ];
 
-export default function AdminNav() {
+export function isAdminNavActive(pathname: string, href: string): boolean {
+  if (href === "/admin") {
+    return pathname === "/admin" || pathname === "/admin/";
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+type AdminNavProps = {
+  mobile?: boolean;
+};
+
+export default function AdminNav({ mobile = false }: AdminNavProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -27,18 +51,90 @@ export default function AdminNav() {
     router.replace("/admin/login");
   }
 
-  /**
-   * Desktop sidebar nav (shown on md+ screens)
-   */
-  const sidebarNav = (
+  if (mobile) {
+    return (
+      <Box
+        component="nav"
+        aria-label="Admin mobile navigation"
+        sx={{
+          display: { xs: "block", md: "none" },
+          mb: 2.5,
+          pb: 1.5,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        <Typography
+          variant="overline"
+          sx={{
+            letterSpacing: "0.08em",
+            fontWeight: 700,
+            color: "text.secondary",
+            display: "block",
+            mb: 1.25,
+          }}
+        >
+          Admin
+        </Typography>
+        <Box sx={{ overflowX: "auto", pb: 0.5 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            useFlexGap
+            sx={{ minWidth: "max-content" }}
+          >
+            {adminLinks.map(({ href, label, Icon }) => {
+              const active = isAdminNavActive(pathname, href);
+              return (
+                <Button
+                  key={href}
+                  component={Link}
+                  href={href}
+                  variant={active ? "contained" : "outlined"}
+                  color={active ? "primary" : "inherit"}
+                  size="small"
+                  startIcon={<Icon fontSize="small" />}
+                  sx={{
+                    textTransform: "none",
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {label}
+                </Button>
+              );
+            })}
+            <Button
+              onClick={() => void handleLogout()}
+              variant="outlined"
+              color="secondary"
+              size="small"
+              startIcon={<LogoutIcon fontSize="small" />}
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Log out
+            </Button>
+          </Stack>
+        </Box>
+      </Box>
+    );
+  }
+
+  return (
     <Box
+      component="nav"
+      aria-label="Admin desktop navigation"
       sx={{
-        width: "260px",
-        borderRight: "1px solid",
-        borderColor: "var(--outline-variant)",
+        width: { md: 244, lg: 264 },
+        borderRight: { md: "1px solid" },
+        borderColor: "divider",
         p: 2,
         flexShrink: 0,
-        backgroundColor: "var(--surface-container-lowest)",
+        bgcolor: "background.paper",
         display: { xs: "none", md: "flex" },
         flexDirection: "column",
         height: "100vh",
@@ -47,155 +143,83 @@ export default function AdminNav() {
         overflowY: "auto",
       }}
     >
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 2, px: 1 }}>
         <Typography
-          variant="body2"
+          variant="overline"
           sx={{
-            fontSize: "0.75rem",
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
-            fontWeight: 600,
-            color: "var(--on-surface-variant)",
-            mb: 1.5,
-            px: 1,
+            letterSpacing: "0.1em",
+            fontWeight: 700,
+            color: "text.secondary",
+            display: "block",
           }}
         >
           Boudokhane Admin
         </Typography>
       </Box>
 
-      <Stack
-        component="ul"
-        spacing={0.75}
-        sx={{ listStyle: "none", p: 0, m: 0, flex: 1 }}
-      >
-        {adminLinks.map((link) => {
-          const isActive = pathname === link.href;
+      <List disablePadding sx={{ flex: 1 }}>
+        {adminLinks.map(({ href, label, Icon }) => {
+          const active = isAdminNavActive(pathname, href);
           return (
-            <li key={link.href}>
-              <Link href={link.href}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
-                    px: 2,
-                    py: 1.5,
-                    borderRadius: "0.5rem",
-                    textDecoration: "none",
-                    color: isActive
-                      ? "var(--on-primary-container)"
-                      : "var(--on-surface-variant)",
-                    backgroundColor: isActive
-                      ? "var(--primary-container)"
-                      : "transparent",
-                    fontWeight: isActive ? 700 : 500,
-                    fontSize: "0.875rem",
-                    transition: "all 200ms ease",
-                    borderLeft: isActive
-                      ? "3px solid var(--primary)"
-                      : "3px solid transparent",
-                    "&:hover": {
-                      backgroundColor: "var(--surface-container-high)",
-                      color: "var(--on-surface)",
-                    },
-                  }}
-                >
-                  <span>{link.icon}</span>
-                  <span>{link.label}</span>
-                </Box>
-              </Link>
-            </li>
+            <ListItemButton
+              key={href}
+              component={Link}
+              href={href}
+              selected={active}
+              sx={{
+                mb: 0.5,
+                borderRadius: 2,
+                py: 1.15,
+                "&.Mui-selected": {
+                  bgcolor: "action.selected",
+                  borderLeft: "2px solid",
+                  borderColor: "divider",
+                  pl: 1.6,
+                },
+                "&:hover": {
+                  bgcolor: "action.hover",
+                },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 38, color: "inherit" }}>
+                <Icon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary={label}
+                primaryTypographyProps={{
+                  fontWeight: active ? 700 : 600,
+                  fontSize: "0.92rem",
+                }}
+              />
+            </ListItemButton>
           );
         })}
-      </Stack>
+      </List>
 
       <Box
         sx={{
           borderTop: "1px solid",
-          borderColor: "var(--outline-variant)",
+          borderColor: "divider",
           pt: 1.5,
-          mt: 1.5,
+          mt: "auto",
         }}
       >
         <Button
           onClick={() => void handleLogout()}
-          variant="text"
+          variant="outlined"
+          color="secondary"
           size="small"
           startIcon={<LogoutIcon />}
           fullWidth
           sx={{
             justifyContent: "flex-start",
-            color: "var(--on-surface-variant)",
-            "&:hover": { color: "var(--on-surface)" },
+            textTransform: "none",
+            fontWeight: 700,
           }}
         >
-          Logout
+          Log out
         </Button>
       </Box>
     </Box>
-  );
-
-  /**
-   * Mobile header nav (shown on xs/sm screens)
-   */
-  const mobileNav = (
-    <Box
-      sx={{
-        borderBottom: "1px solid",
-        borderColor: "var(--outline-variant)",
-        p: 2,
-        mb: 3,
-        display: { xs: "flex", md: "none" },
-        flexDirection: "column",
-        gap: 2,
-      }}
-    >
-      <Box>
-        <Typography
-          variant="body2"
-          sx={{
-            fontSize: "0.75rem",
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
-            fontWeight: 600,
-            color: "var(--on-surface-variant)",
-            mb: 1,
-          }}
-        >
-          Admin Console
-        </Typography>
-      </Box>
-      <Stack direction="row" spacing={1} flexWrap="wrap">
-        {adminLinks.map((link) => (
-          <Button
-            key={link.href}
-            component={Link}
-            href={link.href}
-            variant={pathname === link.href ? "contained" : "outlined"}
-            size="small"
-            sx={{ fontSize: "0.75rem" }}
-          >
-            {link.icon} {link.label}
-          </Button>
-        ))}
-        <Button
-          onClick={() => void handleLogout()}
-          variant="text"
-          size="small"
-          startIcon={<LogoutIcon />}
-          sx={{ fontSize: "0.75rem" }}
-        >
-          Logout
-        </Button>
-      </Stack>
-    </Box>
-  );
-
-  return (
-    <>
-      {sidebarNav}
-      {mobileNav}
-    </>
   );
 }

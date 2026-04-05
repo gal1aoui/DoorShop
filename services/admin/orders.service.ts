@@ -16,6 +16,7 @@ function normalizeAdminOrder(raw: unknown): AdminOrder {
     phone_number: String(payload.phone_number ?? ""),
     delivery_location: String(payload.delivery_location ?? ""),
     customer_note: (payload.customer_note as string | null) ?? null,
+    rejection_reason: (payload.rejection_reason as string | null) ?? null,
     wanted_date: String(payload.wanted_date ?? ""),
     status: payload.status as OrderStatus,
     status_updated_at: String(payload.status_updated_at ?? ""),
@@ -53,6 +54,7 @@ export async function fetchAdminOrders(
         phone_number,
         delivery_location,
         customer_note,
+        rejection_reason,
         wanted_date,
         status,
         status_updated_at,
@@ -94,12 +96,50 @@ export async function fetchAdminOrders(
 export async function updateAdminOrderStatus(
   orderId: string,
   nextStatus: OrderStatus,
+  rejectionReason?: string | null,
 ): Promise<ServiceResult<null>> {
+  const normalizedOrderId = orderId.trim();
+  if (!normalizedOrderId) {
+    return fail("ERR_ORDER_ID_REQUIRED: Order id is required.");
+  }
+
+  const normalizedRejectionReason = rejectionReason?.trim() || null;
+  if (nextStatus === "rejected" && !normalizedRejectionReason) {
+    return fail(
+      "ERR_REJECTION_REASON_REQUIRED: Rejection reason is required for rejected status.",
+    );
+  }
+
   const supabase = getSupabaseClient();
   const { error } = await supabase
     .from("orders")
-    .update({ status: nextStatus })
-    .eq("id", orderId);
+    .update({
+      status: nextStatus,
+      rejection_reason:
+        nextStatus === "rejected" ? normalizedRejectionReason : null,
+    })
+    .eq("id", normalizedOrderId);
+
+  if (error) {
+    return fail(error.message);
+  }
+
+  return ok(null);
+}
+
+export async function deleteAdminOrder(
+  orderId: string,
+): Promise<ServiceResult<null>> {
+  const normalizedOrderId = orderId.trim();
+  if (!normalizedOrderId) {
+    return fail("ERR_ORDER_ID_REQUIRED: Order id is required.");
+  }
+
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from("orders")
+    .delete()
+    .eq("id", normalizedOrderId);
 
   if (error) {
     return fail(error.message);

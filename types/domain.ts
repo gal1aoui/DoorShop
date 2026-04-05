@@ -75,6 +75,7 @@ export interface PublicOrderTrackingResponse {
   full_name: string;
   delivery_location: string;
   customer_note: string | null;
+  rejection_reason: string | null;
   wanted_date: string;
   status: OrderStatus;
   status_updated_at: string;

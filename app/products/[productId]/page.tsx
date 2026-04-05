@@ -11,7 +11,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import OrderForm from "@/components/shop/order-form";
 import ProductImageCarousel from "@/components/shop/product-image-carousel";
 import SupabaseConfigAlert from "@/components/supabase-config-alert";
@@ -20,24 +20,64 @@ import { isSupabaseConfigured } from "@/services/supabase/client";
 import type { CatalogProduct } from "@/types/domain";
 import { formatMoney } from "@/utils/formatters";
 
+function normalizeProductId(
+  rawProductId: string | string[] | undefined,
+): string | null {
+  const firstValue = Array.isArray(rawProductId)
+    ? rawProductId[0]
+    : rawProductId;
+  if (!firstValue) {
+    return null;
+  }
+
+  try {
+    const decoded = decodeURIComponent(firstValue).trim();
+    return decoded || null;
+  } catch {
+    return null;
+  }
+}
+
 export default function ProductDetailsPage() {
-  const params = useParams<{ productId: string }>();
-  const productId = params.productId;
+  const params = useParams();
+  const productId = useMemo(
+    () => normalizeProductId(params?.productId),
+    [params],
+  );
 
   const [product, setProduct] = useState<CatalogProduct | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const productImages = useMemo(
+    () =>
+      [...(product?.door_product_images ?? [])].sort(
+        (left, right) => left.sort_order - right.sort_order,
+      ),
+    [product?.door_product_images],
+  );
 
   useEffect(() => {
     let mounted = true;
 
     async function loadProduct() {
-      if (!isSupabaseConfigured()) {
+      if (!productId) {
         if (!mounted) return;
+        setProduct(null);
+        setErrorMessage("Product id is invalid.");
         setIsLoading(false);
         return;
       }
 
+      if (!isSupabaseConfigured()) {
+        if (!mounted) return;
+        setProduct(null);
+        setIsLoading(false);
+        return;
+      }
+
+      setProduct(null);
+      setSelectedImageIndex(0);
       setIsLoading(true);
       setErrorMessage(null);
       const result = await fetchCatalogProductById(productId);
@@ -45,18 +85,20 @@ export default function ProductDetailsPage() {
       if (!mounted) return;
 
       if (result.error) {
+        setProduct(null);
         setErrorMessage(result.error);
         setIsLoading(false);
         return;
       }
 
       if (!result.data) {
+        setProduct(null);
         setErrorMessage("Product response is empty.");
         setIsLoading(false);
         return;
       }
 
-      setProduct(result.data as CatalogProduct);
+      setProduct(result.data);
       setIsLoading(false);
     }
 
@@ -84,7 +126,7 @@ export default function ProductDetailsPage() {
             <Link href="/" style={{ color: "inherit" }}>
               Home
             </Link>
-            <Link href="/" style={{ color: "inherit" }}>
+            <Link href="/collections" style={{ color: "inherit" }}>
               Collections
             </Link>
             <Typography sx={{ color: "text.primary" }}>
@@ -123,33 +165,46 @@ export default function ProductDetailsPage() {
                 }}
               >
                 <ProductImageCarousel
-                  images={product.door_product_images ?? []}
+                  images={productImages}
                   height={500}
+                  activeIndex={selectedImageIndex}
+                  onActiveIndexChange={setSelectedImageIndex}
+                  autoSlideMs={0}
                 />
               </Box>
 
               {/* Thumbnails */}
-              {(product.door_product_images?.length || 0) > 0 && (
+              {productImages.length > 0 && (
                 <Box
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(4, 1fr)",
-                    gap: 2,
+                    gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))",
+                    gap: 1.25,
                   }}
                 >
-                  {product.door_product_images?.slice(0, 4).map((image) => (
+                  {productImages.map((image, index) => (
                     <Box
                       key={image.id}
+                      component="button"
+                      type="button"
+                      onClick={() => setSelectedImageIndex(index)}
                       sx={{
                         aspectRatio: "1",
                         borderRadius: "0.5rem",
                         overflow: "hidden",
                         backgroundColor: "var(--surface-container-low)",
-                        border: "2px solid var(--outline-variant)",
+                        border: "1px solid var(--outline-variant)",
                         cursor: "pointer",
+                        padding: 0,
+                        transition:
+                          "border-color 180ms ease, transform 180ms ease",
                         "&:hover": {
-                          borderColor: "var(--primary)",
+                          borderColor: "var(--outline)",
+                          transform: "translateY(-1px)",
                         },
+                        ...(index === selectedImageIndex
+                          ? { borderColor: "var(--on-surface)" }
+                          : null),
                       }}
                     >
                       <Image
@@ -161,6 +216,7 @@ export default function ProductDetailsPage() {
                           width: "100%",
                           height: "100%",
                           objectFit: "cover",
+                          display: "block",
                         }}
                       />
                     </Box>
@@ -228,7 +284,7 @@ export default function ProductDetailsPage() {
                         fontWeight: 700,
                       }}
                     >
-                      {product.base_height_cm}cm × {product.base_width_cm}cm
+                      {product.base_height_cm}cm x {product.base_width_cm}cm
                     </Typography>
                   </Box>
                   <Box>
@@ -286,7 +342,7 @@ export default function ProductDetailsPage() {
                       mb: 2,
                     }}
                   >
-                    Premium Collection — Item #{product.slug.toUpperCase()}
+                    Premium Collection - Item #{product.slug.toUpperCase()}
                   </Typography>
 
                   {/* Pricing */}

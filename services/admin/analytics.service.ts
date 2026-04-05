@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/services/supabase/client";
-import type { AnalyticsOrder } from "@/types/admin";
+import type { AnalyticsCatalogSummary, AnalyticsOrder } from "@/types/admin";
 import { fail, ok, type ServiceResult } from "@/types/service";
 
 function normalizeAnalyticsOrder(raw: unknown): AnalyticsOrder {
@@ -50,4 +50,46 @@ export async function fetchAnalyticsOrders(): Promise<
   }
 
   return ok(((data ?? []) as unknown[]).map(normalizeAnalyticsOrder));
+}
+
+export async function fetchAnalyticsCatalogSummary(): Promise<
+  ServiceResult<AnalyticsCatalogSummary>
+> {
+  const supabase = getSupabaseClient();
+  const [productsResult, categoriesResult] = await Promise.all([
+    supabase
+      .from("door_products")
+      .select("id, is_active")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("door_categories")
+      .select("id, is_active")
+      .order("name", { ascending: true }),
+  ]);
+
+  if (productsResult.error) {
+    return fail(productsResult.error.message);
+  }
+
+  if (categoriesResult.error) {
+    return fail(categoriesResult.error.message);
+  }
+
+  const products = (productsResult.data ?? []) as Array<{ is_active: boolean }>;
+  const categories = (categoriesResult.data ?? []) as Array<{
+    is_active: boolean;
+  }>;
+
+  const activeProducts = products.filter((product) => product.is_active).length;
+  const activeCategories = categories.filter(
+    (category) => category.is_active,
+  ).length;
+
+  return ok({
+    totalProducts: products.length,
+    activeProducts,
+    inactiveProducts: Math.max(products.length - activeProducts, 0),
+    totalCategories: categories.length,
+    activeCategories,
+  });
 }

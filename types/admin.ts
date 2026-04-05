@@ -20,6 +20,7 @@ export interface AdminOrder {
   phone_number: string;
   delivery_location: string;
   customer_note: string | null;
+  rejection_reason: string | null;
   wanted_date: string;
   status: OrderStatus;
   status_updated_at: string;
@@ -44,6 +45,14 @@ export interface AnalyticsOrder {
   order_items: AnalyticsOrderItem[];
 }
 
+export interface AnalyticsCatalogSummary {
+  totalProducts: number;
+  activeProducts: number;
+  inactiveProducts: number;
+  totalCategories: number;
+  activeCategories: number;
+}
+
 export interface ProductAggregate {
   name: string;
   quantity: number;
@@ -60,6 +69,28 @@ export interface CreateDeliveryTierInput {
   min_quantity: number;
   max_quantity: number | null;
   delivery_days: number;
+}
+
+/** Client-side tier row (stable React keys). */
+export interface TierDraft {
+  id: number;
+  min_quantity: number;
+  max_quantity: number | null;
+  delivery_days: number;
+}
+
+export interface UpdateProductInput {
+  id: string;
+  category_id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  base_price: number;
+  base_height_cm: number;
+  base_width_cm: number;
+  price_per_extra_cm_height: number;
+  price_per_extra_cm_width: number;
+  delivery_tiers: CreateDeliveryTierInput[];
 }
 
 export interface CreateProductInput {

@@ -139,15 +139,24 @@ export async function fetchCatalogData(): Promise<
 export async function fetchCatalogProductById(
   productId: string,
 ): Promise<ServiceResult<CatalogProduct>> {
+  const normalizedProductId = productId.trim();
+  if (!normalizedProductId) {
+    return fail("Product id is missing.");
+  }
+
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("door_products")
     .select(catalogProductSelect)
-    .eq("id", productId)
-    .single();
+    .eq("id", normalizedProductId)
+    .maybeSingle();
 
   if (error) {
     return fail(error.message);
+  }
+
+  if (!data) {
+    return fail("Product not found.");
   }
 
   const product = normalizeCatalogProduct(data);
@@ -157,4 +166,46 @@ export async function fetchCatalogProductById(
       (left, right) => left.sort_order - right.sort_order,
     ),
   });
+}
+
+export async function fetchCatalogHighlights(
+  limit = 4,
+): Promise<ServiceResult<CatalogProduct[]>> {
+  const normalizedLimit = Math.max(1, Math.min(12, Math.floor(limit)));
+  const catalogResult = await fetchCatalogData();
+  if (catalogResult.error) {
+    return fail(catalogResult.error);
+  }
+
+  if (!catalogResult.data) {
+    return fail("Catalog response is empty.");
+  }
+
+  const products = catalogResult.data.products;
+  if (!products.length) {
+    return ok([]);
+  }
+
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc("get_public_product_highlights", {
+    p_limit: normalizedLimit,
+  });
+
+  if (error || !Array.isArray(data) || !data.length) {
+    return ok(products.slice(0, normalizedLimit));
+  }
+
+  const productById = new Map(products.map((product) => [product.id, product]));
+  const rankedProducts = data
+    .map((row) => {
+      const payload = row as { product_id?: unknown };
+      return productById.get(String(payload.product_id ?? ""));
+    })
+    .filter((product): product is CatalogProduct => Boolean(product));
+
+  if (!rankedProducts.length) {
+    return ok(products.slice(0, normalizedLimit));
+  }
+
+  return ok(rankedProducts.slice(0, normalizedLimit));
 }

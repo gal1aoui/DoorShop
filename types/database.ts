@@ -11,7 +11,8 @@ export type OrderStatus =
   | "confirmed"
   | "constructing"
   | "delivering"
-  | "delivered";
+  | "delivered"
+  | "rejected";
 
 export interface Database {
   public: {
@@ -179,6 +180,7 @@ export interface Database {
           phone_number_normalized: string;
           delivery_location: string;
           customer_note: string | null;
+          rejection_reason: string | null;
           wanted_date: string;
           status: OrderStatus;
           status_updated_at: string;
@@ -193,6 +195,7 @@ export interface Database {
           phone_number_normalized?: string;
           delivery_location: string;
           customer_note?: string | null;
+          rejection_reason?: string | null;
           wanted_date: string;
           status?: OrderStatus;
           status_updated_at?: string;
@@ -207,6 +210,7 @@ export interface Database {
           phone_number_normalized?: string;
           delivery_location?: string;
           customer_note?: string | null;
+          rejection_reason?: string | null;
           wanted_date?: string;
           status?: OrderStatus;
           status_updated_at?: string;
@@ -297,12 +301,24 @@ export interface Database {
           full_name: string;
           delivery_location: string;
           customer_note: string | null;
+          rejection_reason: string | null;
           wanted_date: string;
           status: OrderStatus;
           status_updated_at: string;
           created_at: string;
           items: Json;
           history: Json;
+        }[];
+      };
+      get_public_product_highlights: {
+        Args: {
+          p_limit?: number;
+        };
+        Returns: {
+          product_id: string;
+          order_count: number;
+          total_units: number;
+          total_revenue: number;
         }[];
       };
     };

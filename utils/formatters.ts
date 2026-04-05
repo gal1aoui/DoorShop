@@ -5,11 +5,16 @@ export const moneyFormatter = new Intl.NumberFormat("fr-TN", {
 });
 
 export function formatMoney(value: number): string {
-  return moneyFormatter.format(value ?? 0);
+  return moneyFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
 export function formatDate(value: string | Date): string {
   const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "--";
+  }
+
   return new Intl.DateTimeFormat("en-GB", {
     year: "numeric",
     month: "short",

@@ -3,6 +3,7 @@ import type {
   AdminCatalogData,
   CreateCategoryInput,
   CreateProductInput,
+  UpdateProductInput,
 } from "@/types/admin";
 import type {
   CatalogProduct,
@@ -121,6 +122,92 @@ function safeFileName(value: string): string {
     .replace(/-+/g, "-");
 }
 
+function isPositiveFiniteNumber(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
+function isNonNegativeFiniteNumber(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
+}
+
+function validateDeliveryTiers(
+  tiers: Array<{
+    min_quantity: number;
+    max_quantity: number | null;
+    delivery_days: number;
+  }>,
+): string | null {
+  for (const tier of tiers) {
+    if (
+      !isPositiveFiniteNumber(tier.min_quantity) ||
+      !isPositiveFiniteNumber(tier.delivery_days)
+    ) {
+      return "ERR_TIER_MIN_OR_DAYS_INVALID: Delivery tiers need positive min quantity and delivery days.";
+    }
+
+    if (tier.max_quantity !== null) {
+      if (!isPositiveFiniteNumber(tier.max_quantity)) {
+        return "ERR_TIER_MAX_INVALID: Delivery tier max quantity must be positive when provided.";
+      }
+
+      if (tier.max_quantity < tier.min_quantity) {
+        return "ERR_TIER_RANGE_INVALID: Delivery tier max quantity must be greater than or equal to min quantity.";
+      }
+    }
+  }
+
+  return null;
+}
+
+function validateProductInput(
+  input: Pick<
+    CreateProductInput,
+    | "category_id"
+    | "name"
+    | "slug"
+    | "base_price"
+    | "base_height_cm"
+    | "base_width_cm"
+    | "price_per_extra_cm_height"
+    | "price_per_extra_cm_width"
+    | "delivery_tiers"
+  >,
+): string | null {
+  if (!input.category_id.trim()) {
+    return "ERR_PRODUCT_CATEGORY_REQUIRED: Category is required.";
+  }
+
+  if (!input.name.trim()) {
+    return "ERR_PRODUCT_NAME_REQUIRED: Product name is required.";
+  }
+
+  if (!input.slug.trim()) {
+    return "ERR_PRODUCT_SLUG_REQUIRED: Product slug is required.";
+  }
+
+  if (!isNonNegativeFiniteNumber(input.base_price)) {
+    return "ERR_PRODUCT_BASE_PRICE_INVALID: Base price must be a valid non-negative number.";
+  }
+
+  if (!isPositiveFiniteNumber(input.base_height_cm)) {
+    return "ERR_PRODUCT_BASE_HEIGHT_INVALID: Base height must be a valid positive number.";
+  }
+
+  if (!isPositiveFiniteNumber(input.base_width_cm)) {
+    return "ERR_PRODUCT_BASE_WIDTH_INVALID: Base width must be a valid positive number.";
+  }
+
+  if (!isNonNegativeFiniteNumber(input.price_per_extra_cm_height)) {
+    return "ERR_PRODUCT_HEIGHT_PRICE_INVALID: Height extra price must be a valid non-negative number.";
+  }
+
+  if (!isNonNegativeFiniteNumber(input.price_per_extra_cm_width)) {
+    return "ERR_PRODUCT_WIDTH_PRICE_INVALID: Width extra price must be a valid non-negative number.";
+  }
+
+  return validateDeliveryTiers(input.delivery_tiers);
+}
+
 export async function fetchAdminCatalogData(): Promise<
   ServiceResult<AdminCatalogData>
 > {
@@ -155,13 +242,24 @@ export async function fetchAdminCatalogData(): Promise<
 export async function createDoorCategory(
   input: CreateCategoryInput,
 ): Promise<ServiceResult<{ id: string }>> {
+  const normalizedName = input.name.trim();
+  const normalizedSlug = input.slug.trim();
+
+  if (!normalizedName) {
+    return fail("ERR_CATEGORY_NAME_REQUIRED: Category name is required.");
+  }
+
+  if (!normalizedSlug) {
+    return fail("ERR_CATEGORY_SLUG_REQUIRED: Category slug is required.");
+  }
+
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("door_categories")
     .insert({
-      name: input.name,
-      slug: input.slug,
-      description: input.description ?? null,
+      name: normalizedName,
+      slug: normalizedSlug,
+      description: input.description?.trim() || null,
     })
     .select("id")
     .single();
@@ -176,14 +274,19 @@ export async function createDoorCategory(
 export async function createDoorProductWithTiers(
   input: CreateProductInput,
 ): Promise<ServiceResult<{ id: string }>> {
+  const validationError = validateProductInput(input);
+  if (validationError) {
+    return fail(validationError);
+  }
+
   const supabase = getSupabaseClient();
   const { data: insertedProduct, error: productError } = await supabase
     .from("door_products")
     .insert({
-      category_id: input.category_id,
-      name: input.name,
-      slug: input.slug,
-      description: input.description ?? null,
+      category_id: input.category_id.trim(),
+      name: input.name.trim(),
+      slug: input.slug.trim(),
+      description: input.description?.trim() || null,
       base_price: input.base_price,
       base_height_cm: input.base_height_cm,
       base_width_cm: input.base_width_cm,
@@ -198,9 +301,7 @@ export async function createDoorProductWithTiers(
     return fail(productError?.message ?? "Failed to create product.");
   }
 
-  const normalizedTiers = input.delivery_tiers.filter(
-    (tier) => tier.min_quantity > 0 && tier.delivery_days > 0,
-  );
+  const normalizedTiers = input.delivery_tiers;
 
   if (normalizedTiers.length > 0) {
     const { error: tierError } = await supabase
@@ -224,13 +325,144 @@ export async function createDoorProductWithTiers(
   return ok({ id: insertedProduct.id });
 }
 
+export async function updateDoorProductWithTiers(
+  input: UpdateProductInput,
+): Promise<ServiceResult<void>> {
+  const normalizedInput: CreateProductInput = {
+    category_id: input.category_id,
+    name: input.name,
+    slug: input.slug,
+    description: input.description ?? null,
+    base_price: input.base_price,
+    base_height_cm: input.base_height_cm,
+    base_width_cm: input.base_width_cm,
+    price_per_extra_cm_height: input.price_per_extra_cm_height,
+    price_per_extra_cm_width: input.price_per_extra_cm_width,
+    delivery_tiers: input.delivery_tiers,
+    thumbnail_url: null,
+  };
+  const validationError = validateProductInput(normalizedInput);
+  if (validationError) {
+    return fail(validationError);
+  }
+
+  const supabase = getSupabaseClient();
+
+  const { error: productError } = await supabase
+    .from("door_products")
+    .update({
+      category_id: input.category_id.trim(),
+      name: input.name.trim(),
+      slug: input.slug.trim(),
+      description: input.description?.trim() || null,
+      base_price: input.base_price,
+      base_height_cm: input.base_height_cm,
+      base_width_cm: input.base_width_cm,
+      price_per_extra_cm_height: input.price_per_extra_cm_height,
+      price_per_extra_cm_width: input.price_per_extra_cm_width,
+    })
+    .eq("id", input.id);
+
+  if (productError) {
+    return fail(productError.message);
+  }
+
+  const { error: deleteTiersError } = await supabase
+    .from("door_delivery_tiers")
+    .delete()
+    .eq("product_id", input.id);
+
+  if (deleteTiersError) {
+    return fail(deleteTiersError.message);
+  }
+
+  const normalizedTiers = input.delivery_tiers;
+
+  if (normalizedTiers.length > 0) {
+    const { error: tierError } = await supabase
+      .from("door_delivery_tiers")
+      .insert(
+        normalizedTiers.map((tier) => ({
+          product_id: input.id,
+          min_quantity: tier.min_quantity,
+          max_quantity: tier.max_quantity,
+          delivery_days: tier.delivery_days,
+        })),
+      );
+
+    if (tierError) {
+      return fail(tierError.message);
+    }
+  }
+
+  return ok(undefined);
+}
+
+export async function deleteDoorProduct(
+  productId: string,
+): Promise<ServiceResult<void>> {
+  const normalizedProductId = productId.trim();
+  if (!normalizedProductId) {
+    return fail("Product id is required.");
+  }
+
+  const supabase = getSupabaseClient();
+
+  const { data: imageRows, error: imageSelectError } = await supabase
+    .from("door_product_images")
+    .select("storage_path")
+    .eq("product_id", normalizedProductId);
+
+  if (imageSelectError) {
+    return fail(imageSelectError.message);
+  }
+
+  const paths = (imageRows ?? [])
+    .map((row) => row.storage_path as string)
+    .filter(Boolean);
+
+  if (paths.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from(PRODUCT_IMAGES_BUCKET)
+      .remove(paths);
+
+    if (storageError) {
+      return fail(
+        `Could not remove images from storage: ${storageError.message}`,
+      );
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from("door_products")
+    .delete()
+    .eq("id", normalizedProductId);
+
+  if (deleteError) {
+    return fail(deleteError.message);
+  }
+
+  return ok(undefined);
+}
+
 export async function uploadDoorProductImages(params: {
   productId: string;
   productSlug: string;
   files: File[];
 }): Promise<ServiceResult<DoorProductImage[]>> {
+  const normalizedProductId = params.productId.trim();
+  const normalizedProductSlug = params.productSlug.trim();
+
+  if (!normalizedProductId || !normalizedProductSlug) {
+    return fail("Product id and slug are required for image upload.");
+  }
+
   if (!params.files.length) {
     return ok([]);
+  }
+
+  if (params.files.some((file) => !file.type.startsWith("image/"))) {
+    return fail("Only image files are allowed.");
   }
 
   const supabase = getSupabaseClient();
@@ -249,7 +481,7 @@ export async function uploadDoorProductImages(params: {
     const fileName = safeFileName(
       `${Date.now()}-${index + 1}-${randomSuffix}.${extension}`,
     );
-    const storagePath = `${params.productSlug}/${params.productId}/${fileName}`;
+    const storagePath = `${normalizedProductSlug}/${normalizedProductId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from(PRODUCT_IMAGES_BUCKET)
@@ -274,7 +506,7 @@ export async function uploadDoorProductImages(params: {
       .getPublicUrl(storagePath);
 
     uploadedRows.push({
-      product_id: params.productId,
+      product_id: normalizedProductId,
       storage_path: storagePath,
       public_url: publicUrlData.publicUrl,
       alt_text: null,
@@ -302,7 +534,7 @@ export async function uploadDoorProductImages(params: {
     await supabase
       .from("door_products")
       .update({ thumbnail_url: firstImageUrl })
-      .eq("id", params.productId);
+      .eq("id", normalizedProductId);
   }
 
   return ok((insertedImages ?? []) as DoorProductImage[]);

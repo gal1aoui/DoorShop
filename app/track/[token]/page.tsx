@@ -1,8 +1,10 @@
 "use client";
 
+import MapOutlinedIcon from "@mui/icons-material/MapOutlined";
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   CircularProgress,
@@ -25,6 +27,28 @@ import type {
 import { formatDate, formatMoney } from "@/utils/formatters";
 import { ORDER_STATUS_LABELS } from "@/utils/order-status";
 
+const TRACKING_TOKEN_PATTERN = /^[a-z0-9_-]{6,128}$/i;
+
+function mapUrl(location: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+}
+
+function normalizeTrackingToken(
+  rawToken: string | string[] | undefined,
+): string | null {
+  const firstToken = Array.isArray(rawToken) ? rawToken[0] : rawToken;
+  if (!firstToken) {
+    return null;
+  }
+
+  try {
+    const decoded = decodeURIComponent(firstToken).trim().toLowerCase();
+    return TRACKING_TOKEN_PATTERN.test(decoded) ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
 function parseItems(value: unknown): PublicOrderTrackingItem[] {
   if (!Array.isArray(value)) {
     return [];
@@ -40,8 +64,8 @@ function parseHistory(value: unknown): PublicOrderTrackingHistory[] {
 }
 
 export default function TrackOrderByTokenPage() {
-  const params = useParams<{ token: string }>();
-  const token = params.token;
+  const params = useParams();
+  const token = useMemo(() => normalizeTrackingToken(params?.token), [params]);
 
   const [order, setOrder] = useState<PublicOrderTrackingResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,8 +75,17 @@ export default function TrackOrderByTokenPage() {
     let mounted = true;
 
     async function loadOrder() {
+      if (!token) {
+        if (!mounted) return;
+        setOrder(null);
+        setErrorMessage("Tracking token format is invalid.");
+        setIsLoading(false);
+        return;
+      }
+
       if (!isSupabaseConfigured()) {
         if (!mounted) return;
+        setOrder(null);
         setIsLoading(false);
         return;
       }
@@ -65,12 +98,14 @@ export default function TrackOrderByTokenPage() {
       if (!mounted) return;
 
       if (result.error) {
+        setOrder(null);
         setErrorMessage(result.error);
         setIsLoading(false);
         return;
       }
 
       if (!result.data) {
+        setOrder(null);
         setErrorMessage("Tracking response is empty.");
         setIsLoading(false);
         return;
@@ -125,9 +160,26 @@ export default function TrackOrderByTokenPage() {
                   <Typography variant="body2">
                     Customer: {order.full_name}
                   </Typography>
-                  <Typography variant="body2">
-                    Delivery location: {order.delivery_location}
-                  </Typography>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1}
+                    alignItems={{ sm: "center" }}
+                  >
+                    <Typography variant="body2">
+                      Delivery location: {order.delivery_location}
+                    </Typography>
+                    <Button
+                      component="a"
+                      href={mapUrl(order.delivery_location)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      size="small"
+                      variant="outlined"
+                      startIcon={<MapOutlinedIcon fontSize="small" />}
+                    >
+                      Open map
+                    </Button>
+                  </Stack>
                   <Typography variant="body2">
                     Wanted date: {formatDate(order.wanted_date)}
                   </Typography>
@@ -138,6 +190,11 @@ export default function TrackOrderByTokenPage() {
                     <Typography variant="body2">
                       Notes: {order.customer_note}
                     </Typography>
+                  ) : null}
+                  {order.status === "rejected" && order.rejection_reason ? (
+                    <Alert severity="error" sx={{ mt: 1 }}>
+                      Rejection reason: {order.rejection_reason}
+                    </Alert>
                   ) : null}
                 </Stack>
               </CardContent>

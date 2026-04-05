@@ -3,66 +3,122 @@
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { Box, IconButton, Stack } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DoorProductImage } from "@/types/domain";
 
 interface ProductImageCarouselProps {
   images: DoorProductImage[];
+  /** @deprecated Prefer aspectRatio + minHeight for flexible layouts */
   height?: number;
+  /** CSS aspect-ratio value, e.g. `4 / 3` or `16 / 9` */
+  aspectRatio?: string;
+  minHeight?: number;
   autoSlideMs?: number;
+  activeIndex?: number;
+  onActiveIndexChange?: (nextIndex: number) => void;
+  disableFrame?: boolean;
 }
 
 const SWIPE_THRESHOLD = 40;
 
 export default function ProductImageCarousel({
   images,
-  height = 220,
+  height,
+  aspectRatio = "4 / 3",
+  minHeight = 180,
   autoSlideMs = 3500,
+  activeIndex,
+  onActiveIndexChange,
+  disableFrame = false,
 }: ProductImageCarouselProps) {
   const sortedImages = useMemo(
     () => [...images].sort((left, right) => left.sort_order - right.sort_order),
     [images],
   );
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [internalActiveIndex, setInternalActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const isControlled = typeof activeIndex === "number";
+  const resolvedIndex = isControlled ? activeIndex : internalActiveIndex;
+
+  const updateIndex = useCallback(
+    (nextIndex: number) => {
+      if (!isControlled) {
+        setInternalActiveIndex(nextIndex);
+      }
+      onActiveIndexChange?.(nextIndex);
+    },
+    [isControlled, onActiveIndexChange],
+  );
+
+  const frameSx = height
+    ? {
+        height,
+        aspectRatio: undefined as string | undefined,
+        minHeight: undefined as number | undefined,
+      }
+    : {
+        height: "auto" as const,
+        aspectRatio,
+        minHeight,
+        width: "100%",
+      };
 
   useEffect(() => {
     if (sortedImages.length <= 1) {
       return;
     }
 
+    if (autoSlideMs <= 0) {
+      return;
+    }
+
+    if (isControlled && !onActiveIndexChange) {
+      return;
+    }
+
     const timer = window.setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % sortedImages.length);
+      const nextIndex = (resolvedIndex + 1) % sortedImages.length;
+      updateIndex(nextIndex);
     }, autoSlideMs);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [autoSlideMs, sortedImages.length]);
+  }, [
+    autoSlideMs,
+    isControlled,
+    onActiveIndexChange,
+    resolvedIndex,
+    sortedImages.length,
+    updateIndex,
+  ]);
 
   useEffect(() => {
-    if (activeIndex <= sortedImages.length - 1) {
+    if (resolvedIndex <= sortedImages.length - 1) {
       return;
     }
 
-    setActiveIndex(0);
-  }, [activeIndex, sortedImages.length]);
+    updateIndex(0);
+  }, [resolvedIndex, sortedImages.length, updateIndex]);
 
   function goPrevious() {
-    setActiveIndex((prev) =>
-      prev === 0 ? sortedImages.length - 1 : Math.max(0, prev - 1),
-    );
+    const nextIndex =
+      resolvedIndex === 0
+        ? sortedImages.length - 1
+        : Math.max(0, resolvedIndex - 1);
+    updateIndex(nextIndex);
   }
 
   function goNext() {
-    setActiveIndex((prev) => (prev + 1) % sortedImages.length);
+    const nextIndex = (resolvedIndex + 1) % sortedImages.length;
+    updateIndex(nextIndex);
   }
 
   if (!sortedImages.length) {
     return (
       <Box
         sx={{
-          height,
+          ...frameSx,
           borderRadius: 2,
           border: "1px solid",
           borderColor: "divider",
@@ -77,10 +133,11 @@ export default function ProductImageCarousel({
       sx={{
         position: "relative",
         overflow: "hidden",
-        borderRadius: 2,
-        height,
-        border: "1px solid",
-        borderColor: "divider",
+        borderRadius: disableFrame ? 0 : 2,
+        width: "100%",
+        ...frameSx,
+        border: disableFrame ? "none" : "1px solid",
+        borderColor: disableFrame ? "transparent" : "divider",
         bgcolor: "action.hover",
       }}
       onTouchStart={(event) => {
@@ -109,11 +166,13 @@ export default function ProductImageCarousel({
     >
       <Box
         sx={{
-          height: "100%",
+          height: height ? "100%" : "100%",
           width: `${sortedImages.length * 100}%`,
           display: "flex",
-          transform: `translateX(-${activeIndex * (100 / sortedImages.length)}%)`,
+          transform: `translateX(-${resolvedIndex * (100 / sortedImages.length)}%)`,
           transition: "transform 450ms ease",
+          position: "absolute",
+          inset: 0,
         }}
       >
         {sortedImages.map((image) => (
@@ -137,30 +196,40 @@ export default function ProductImageCarousel({
         <>
           <IconButton
             size="small"
-            onClick={goPrevious}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              goPrevious();
+            }}
+            aria-label="Previous image"
             sx={{
               position: "absolute",
               top: "50%",
               left: 8,
               transform: "translateY(-50%)",
-              bgcolor: "rgba(0, 0, 0, 0.35)",
+              bgcolor: "rgba(0, 0, 0, 0.4)",
               color: "common.white",
-              "&:hover": { bgcolor: "rgba(0, 0, 0, 0.5)" },
+              "&:hover": { bgcolor: "rgba(0, 0, 0, 0.55)" },
             }}
           >
             <ChevronLeftRoundedIcon />
           </IconButton>
           <IconButton
             size="small"
-            onClick={goNext}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              goNext();
+            }}
+            aria-label="Next image"
             sx={{
               position: "absolute",
               top: "50%",
               right: 8,
               transform: "translateY(-50%)",
-              bgcolor: "rgba(0, 0, 0, 0.35)",
+              bgcolor: "rgba(0, 0, 0, 0.4)",
               color: "common.white",
-              "&:hover": { bgcolor: "rgba(0, 0, 0, 0.5)" },
+              "&:hover": { bgcolor: "rgba(0, 0, 0, 0.55)" },
             }}
           >
             <ChevronRightRoundedIcon />
@@ -176,7 +245,7 @@ export default function ProductImageCarousel({
               px: 1,
               py: 0.5,
               borderRadius: 20,
-              bgcolor: "rgba(0, 0, 0, 0.35)",
+              bgcolor: "rgba(0, 0, 0, 0.4)",
             }}
           >
             {sortedImages.map((image, index) => (
@@ -187,9 +256,9 @@ export default function ProductImageCarousel({
                   height: 8,
                   borderRadius: "50%",
                   bgcolor:
-                    index === activeIndex
-                      ? "common.white"
-                      : "rgba(255,255,255,0.5)",
+                    index === resolvedIndex
+                      ? "primary.main"
+                      : "rgba(255,255,255,0.45)",
                 }}
               />
             ))}

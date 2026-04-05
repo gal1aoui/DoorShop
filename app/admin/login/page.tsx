@@ -24,8 +24,8 @@ import { isSupabaseConfigured } from "@/services/supabase/client";
 export default function AdminLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("admin@admin.com");
-  const [password, setPassword] = useState("a123456A");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(
     searchParams.get("error"),
   );
@@ -45,8 +45,24 @@ export default function AdminLoginPage() {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setErrorMessage("ERR_ADMIN_EMAIL_REQUIRED: Email is required.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setErrorMessage("ERR_ADMIN_EMAIL_INVALID: Email format is invalid.");
+      return;
+    }
+
+    if (!password.trim()) {
+      setErrorMessage("ERR_ADMIN_PASSWORD_REQUIRED: Password is required.");
+      return;
+    }
+
     setIsLoading(true);
-    const result = await signInAsAdmin(email, password);
+    const result = await signInAsAdmin(normalizedEmail, password);
 
     if (result.error) {
       setErrorMessage(result.error);
@@ -78,7 +94,7 @@ export default function AdminLoginPage() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                required
+                autoComplete="email"
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -94,7 +110,7 @@ export default function AdminLoginPage() {
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                required
+                autoComplete="current-password"
                 slotProps={{
                   input: {
                     startAdornment: (

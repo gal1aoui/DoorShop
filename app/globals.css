@@ -1,80 +1,55 @@
 @layer theme, base, mui, components, utilities;
 @import "tailwindcss";
 
+/*
+  Initial paint matches light theme; AppThemeProvider syncs from localStorage
+  and applies the full palette via theme-css-bridge.ts.
+*/
 :root {
-  --background: #f9f9fb;
-  --foreground: #2d3338;
-
-  /* Material Design Colors */
-  --primary: #5d5e61;
-  --on-primary: #f7f7fa;
-  --primary-container: #e2e2e5;
-  --on-primary-container: #505254;
-  --primary-fixed: #e2e2e5;
-  --primary-fixed-dim: #d4d4d7;
-  --on-primary-fixed: #3e3f42;
-  --on-primary-fixed-variant: #5a5c5e;
-  --primary-dim: #515255;
-
-  --secondary: #5b6065;
-  --on-secondary: #f5f9ff;
-  --secondary-container: #dee3e9;
-  --on-secondary-container: #4d5257;
-  --secondary-fixed: #dee3e9;
-  --secondary-fixed-dim: #d0d5da;
-  --on-secondary-fixed: #3b4045;
-  --on-secondary-fixed-variant: #575c61;
-  --secondary-dim: #4f5458;
-
-  --tertiary: #815534;
-  --on-tertiary: #fff7f4;
-  --tertiary-container: #fac097;
-  --on-tertiary-container: #613b1c;
-  --tertiary-fixed: #fac097;
-  --tertiary-fixed-dim: #ebb38a;
-  --on-tertiary-fixed: #4a280a;
-  --on-tertiary-fixed-variant: #6c4324;
-  --tertiary-dim: #734a29;
-
-  --surface: #f9f9fb;
-  --surface-dim: #d3dbe3;
-  --surface-bright: #f9f9fb;
+  --background: #f4f4f5;
+  --foreground: #0a0a0a;
+  --primary: #2563eb;
+  --on-primary: #ffffff;
+  --surface: #f4f4f5;
   --surface-container-lowest: #ffffff;
-  --surface-container-low: #f2f4f7;
-  --surface-container: #ebeef3;
-  --surface-container-high: #e4e9ee;
-  --surface-container-highest: #dde3ea;
+  --surface-container-low: #f4f4f5;
+  --on-surface: #0a0a0a;
+  --on-surface-variant: #52525b;
+  --outline-variant: #d4d4d8;
+  --tertiary: #3b82f6;
+  --tertiary-dim: #2563eb;
+  --success: #15803d;
+  --warning: #b45309;
+}
 
-  --on-surface: #2d3338;
-  --on-surface-variant: #596066;
-
-  --outline: #757b82;
-  --outline-variant: #acb3b9;
-  --surface-variant: #dde3ea;
-
-  --error: #9f403d;
-  --on-error: #fff7f6;
-  --error-container: #fe8983;
-  --on-error-container: #752121;
-  --error-dim: #4e0309;
+html.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --primary: #60a5fa;
+  --on-primary: #0a0a0a;
+  --surface: #09090b;
+  --surface-container-lowest: #18181b;
+  --surface-container-low: #18181b;
+  --on-surface: #fafafa;
+  --on-surface-variant: #a1a1aa;
+  --outline-variant: #3f3f46;
+  --tertiary: #93c5fd;
+  --tertiary-dim: #60a5fa;
+  --success: #34d399;
+  --warning: #fbbf24;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Inter", sans-serif;
-  --font-headline: "Manrope", sans-serif;
-}
-
-html.dark {
-  --background: #0b1a2b;
-  --foreground: #e6f1ff;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-sans);
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
@@ -92,7 +67,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: "Manrope", sans-serif;
+  font-family: var(--font-headline);
   font-weight: 700;
 }
 

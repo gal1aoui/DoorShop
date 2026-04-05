@@ -6,11 +6,12 @@ import { ORDER_STATUS_LABELS } from "@/utils/order-status";
 
 function statusColor(
   status: OrderStatus,
-): "default" | "info" | "primary" | "warning" | "success" {
+): "default" | "info" | "primary" | "warning" | "success" | "error" {
   if (status === "received") return "info";
   if (status === "confirmed") return "primary";
   if (status === "constructing") return "warning";
   if (status === "delivering") return "warning";
+  if (status === "rejected") return "error";
   return "success";
 }
 

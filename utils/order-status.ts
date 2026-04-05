@@ -6,6 +6,7 @@ export const ORDER_STATUSES: OrderStatus[] = [
   "constructing",
   "delivering",
   "delivered",
+  "rejected",
 ];
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -14,4 +15,5 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   constructing: "Constructing",
   delivering: "Delivering",
   delivered: "Delivered",
+  rejected: "Rejected",
 };

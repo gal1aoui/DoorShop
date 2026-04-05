@@ -3,6 +3,22 @@ import { type NextRequest, NextResponse } from "next/server";
 const ADMIN_LOGIN_PATH = "/admin/login";
 const ADMIN_ACCESS_COOKIE = "door-admin-access-token";
 
+function safeDecodeURIComponent(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function safeAtob(value: string): string | null {
+  try {
+    return atob(value);
+  } catch {
+    return null;
+  }
+}
+
 function decodeBase64Url(value: string): string {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
   const padding = "=".repeat((4 - (normalized.length % 4)) % 4);
@@ -24,10 +40,17 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 function parseAccessTokenFromCookie(rawCookie: string): string | null {
-  const decodedValue = decodeURIComponent(rawCookie);
+  const decodedValue = safeDecodeURIComponent(rawCookie);
+  if (!decodedValue) {
+    return null;
+  }
+
   const payloadValue = decodedValue.startsWith("base64-")
-    ? atob(decodedValue.slice(7))
+    ? safeAtob(decodedValue.slice(7))
     : decodedValue;
+  if (!payloadValue) {
+    return null;
+  }
 
   try {
     const parsed = JSON.parse(payloadValue) as unknown;
@@ -56,7 +79,7 @@ function parseAccessTokenFromCookie(rawCookie: string): string | null {
 function getAccessTokenFromRequest(request: NextRequest): string | null {
   const directCookie = request.cookies.get(ADMIN_ACCESS_COOKIE)?.value;
   if (directCookie) {
-    return decodeURIComponent(directCookie);
+    return safeDecodeURIComponent(directCookie);
   }
 
   const allCookies = request.cookies.getAll();
@@ -74,7 +97,11 @@ function getAccessTokenFromRequest(request: NextRequest): string | null {
       (cookie) =>
         cookie.name.startsWith("sb-") && /-auth-token\.\d+$/.test(cookie.name),
     )
-    .sort((left, right) => left.name.localeCompare(right.name));
+    .sort((left, right) => {
+      const leftIndex = Number(left.name.split(".").pop() ?? "");
+      const rightIndex = Number(right.name.split(".").pop() ?? "");
+      return leftIndex - rightIndex;
+    });
 
   if (!chunkedCookies.length) {
     return null;
@@ -141,19 +168,12 @@ function buildLoginRedirect(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const adminRequest = await isAdminRequest(request);
 
   if (pathname === ADMIN_LOGIN_PATH) {
-    if (!adminRequest) {
-      return NextResponse.next();
-    }
-
-    const url = request.nextUrl.clone();
-    url.pathname = "/admin/orders";
-    url.search = "";
-    return NextResponse.redirect(url);
+    return NextResponse.next();
   }
 
+  const adminRequest = await isAdminRequest(request);
   if (!adminRequest) {
     return buildLoginRedirect(request);
   }

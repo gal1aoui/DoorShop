@@ -10,7 +10,20 @@ export default function ThemeToggleButton() {
 
   return (
     <Tooltip title={`Switch to ${mode === "light" ? "dark" : "light"} mode`}>
-      <IconButton color="inherit" onClick={toggleColorMode}>
+      <IconButton
+        onClick={toggleColorMode}
+        size="small"
+        aria-label={`Switch to ${mode === "light" ? "dark" : "light"} mode`}
+        sx={{
+          color: "text.primary",
+          border: "1px solid",
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          "&:hover": {
+            bgcolor: "action.hover",
+          },
+        }}
+      >
         {mode === "light" ? <DarkModeIcon /> : <LightModeIcon />}
       </IconButton>
     </Tooltip>

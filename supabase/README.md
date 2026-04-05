@@ -23,6 +23,11 @@ Step-by-step modular order:
 15. `seeds/10_seed_catalog.sql`
 16. `seeds/20_seed_orders.sql`
 
+Patch files (for already-running environments):
+
+1. `patches/2026-04-05_orders_rejected_reason.sql`
+2. `patches/2026-04-05_public_product_highlights.sql`
+
 ## Admin bootstrap
 
 Create this auth user first in Supabase Dashboard (`Authentication > Users`):

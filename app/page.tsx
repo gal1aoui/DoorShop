@@ -1,56 +1,62 @@
 "use client";
 
-import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
-import FilterListIcon from "@mui/icons-material/FilterList";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import FactoryIcon from "@mui/icons-material/Factory";
+import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
+import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import {
   Alert,
   Box,
   Button,
   Card,
   CardContent,
-  Chip,
   CircularProgress,
   Container,
-  InputAdornment,
-  MenuItem,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import ProductImageCarousel from "@/components/shop/product-image-carousel";
+import { useEffect, useState } from "react";
+import CatalogProductCard from "@/components/shop/catalog-product-card";
 import SupabaseConfigAlert from "@/components/supabase-config-alert";
-import { fetchCatalogData } from "@/services/catalog/catalog.service";
+import {
+  fetchCatalogData,
+  fetchCatalogHighlights,
+} from "@/services/catalog/catalog.service";
 import { isSupabaseConfigured } from "@/services/supabase/client";
-import type { CatalogProduct, DoorCategory } from "@/types/domain";
-import { formatMoney } from "@/utils/formatters";
+import type { CatalogProduct } from "@/types/domain";
 
-function minDeliveryLabel(product: CatalogProduct): string {
-  if (!product.door_delivery_tiers.length) {
-    return "Delivery tier not set";
-  }
-
-  const minDays = Math.min(
-    ...product.door_delivery_tiers.map((tier) => tier.delivery_days),
-  );
-  return `${minDays} day(s)`;
-}
+const VALUE_ITEMS = [
+  {
+    title: "Crafted In-House",
+    description:
+      "Every frame is engineered and assembled by our own production team.",
+    icon: <FactoryIcon fontSize="small" />,
+  },
+  {
+    title: "Precision First",
+    description:
+      "Dimension-by-dimension manufacturing with transparent lead-time tiers.",
+    icon: <PrecisionManufacturingIcon fontSize="small" />,
+  },
+  {
+    title: "Reliable Delivery",
+    description:
+      "End-to-end order tracking with clear status updates for every project.",
+    icon: <VerifiedUserIcon fontSize="small" />,
+  },
+];
 
 export default function HomePage() {
-  const [categories, setCategories] = useState<DoorCategory[]>([]);
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [highlights, setHighlights] = useState<CatalogProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [minPriceFilter, setMinPriceFilter] = useState<string>("");
-  const [maxPriceFilter, setMaxPriceFilter] = useState<string>("");
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadCatalog() {
+    async function loadHighlights() {
       if (!isSupabaseConfigured()) {
         if (!mounted) return;
         setIsLoading(false);
@@ -59,67 +65,53 @@ export default function HomePage() {
 
       setIsLoading(true);
       setErrorMessage(null);
-      const result = await fetchCatalogData();
+
+      const highlightResult = await fetchCatalogHighlights(4);
 
       if (!mounted) return;
 
-      if (result.error) {
-        setErrorMessage(result.error);
+      if (!highlightResult.error && highlightResult.data) {
+        setHighlights(highlightResult.data);
         setIsLoading(false);
         return;
       }
 
-      if (!result.data) {
+      const catalogResult = await fetchCatalogData();
+      if (!mounted) return;
+
+      if (catalogResult.error) {
+        setErrorMessage(catalogResult.error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!catalogResult.data) {
         setErrorMessage("Catalog response is empty.");
         setIsLoading(false);
         return;
       }
 
-      setCategories(result.data.categories as DoorCategory[]);
-      setProducts(result.data.products as CatalogProduct[]);
+      setHighlights(catalogResult.data.products.slice(0, 4));
       setIsLoading(false);
     }
 
-    void loadCatalog();
+    void loadHighlights();
 
     return () => {
       mounted = false;
     };
   }, []);
 
-  const filteredProducts = useMemo(() => {
-    const minPrice =
-      minPriceFilter.trim() === ""
-        ? Number.NEGATIVE_INFINITY
-        : Number(minPriceFilter);
-    const maxPrice =
-      maxPriceFilter.trim() === ""
-        ? Number.POSITIVE_INFINITY
-        : Number(maxPriceFilter);
-
-    return products.filter((product) => {
-      const matchesCategory =
-        categoryFilter === "all" || product.category_id === categoryFilter;
-      const matchesPrice =
-        product.base_price >= minPrice && product.base_price <= maxPrice;
-
-      return matchesCategory && matchesPrice;
-    });
-  }, [categoryFilter, minPriceFilter, maxPriceFilter, products]);
-
   return (
     <Box>
-      {/* Hero Section */}
       <Box
         sx={{
           position: "relative",
-          height: { xs: 400, md: 600 },
-          overflow: "hidden",
+          minHeight: { xs: 420, md: 560 },
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-start",
           backgroundImage:
-            'url("https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1600&h=800&fit=crop")',
+            'url("https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1800&h=1000&fit=crop")',
           backgroundSize: "cover",
           backgroundPosition: "center",
           "&::before": {
@@ -127,236 +119,157 @@ export default function HomePage() {
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to right, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 100%)",
-            zIndex: 1,
+              "linear-gradient(100deg, rgba(5,10,19,0.83) 0%, rgba(5,10,19,0.46) 55%, rgba(5,10,19,0.2) 100%)",
           },
         }}
       >
-        <Container
-          maxWidth="lg"
-          sx={{
-            position: "relative",
-            zIndex: 2,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            height: "100%",
-          }}
-        >
-          <Typography
-            variant="caption"
-            sx={{
-              fontSize: "0.75rem",
-              letterSpacing: "0.3em",
-              textTransform: "uppercase",
-              color: "#fac097",
-              fontWeight: 700,
-              mb: 2,
-            }}
-          >
-            The Art of Entry
-          </Typography>
-          <Typography
-            variant="h2"
-            sx={{
-              color: "#f7f7fa",
-              fontFamily: '"Manrope", sans-serif',
-              fontWeight: 800,
-              letterSpacing: "-0.02em",
-              fontSize: { xs: "2.5rem", md: "4rem" },
-              mb: 3,
-              maxWidth: "800px",
-            }}
-          >
-            Structural Integrity.
-          </Typography>
-          <Typography
-            sx={{
-              color: "rgba(247, 247, 250, 0.8)",
-              fontSize: { xs: "1rem", md: "1.125rem" },
-              maxWidth: "600px",
-              mb: 4,
-              fontWeight: 300,
-              lineHeight: 1.6,
-            }}
-          >
-            Bespoke architectural solutions that redefine the transition between
-            spaces. Precision engineered in our atelier.
-          </Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-            <Button
-              component="a"
-              href="#catalog"
-              variant="contained"
+        <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
+          <Stack spacing={2.2} sx={{ maxWidth: 720 }}>
+            <Typography
+              variant="overline"
               sx={{
-                backgroundColor: "#815534",
-                color: "#fff7f4",
-                px: 4,
-                py: 1.5,
+                color: alpha("#ffffff", 0.9),
+                letterSpacing: "0.2em",
                 fontWeight: 700,
-                fontSize: "0.875rem",
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-                "&:hover": {
-                  backgroundColor: "#6c4324",
-                },
               }}
             >
-              Explore Collections
-            </Button>
+              BOUDOKHANE DOORS
+            </Typography>
+            <Typography
+              variant="h1"
+              sx={{
+                color: "common.white",
+                fontSize: { xs: "2rem", sm: "2.5rem", md: "3.25rem" },
+                lineHeight: 1.08,
+              }}
+            >
+              Architectural entry systems built for modern spaces.
+            </Typography>
+            <Typography
+              sx={{
+                color: alpha("#ffffff", 0.86),
+                fontSize: { xs: "1rem", md: "1.1rem" },
+                maxWidth: 560,
+              }}
+            >
+              Premium doors, tailored dimensions, and professional delivery
+              workflow from first selection to final installation.
+            </Typography>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              pt={0.5}
+            >
+              <Button
+                component={Link}
+                href="/collections"
+                variant="contained"
+                size="large"
+                endIcon={<ArrowForwardIcon />}
+                sx={{ fontWeight: 700 }}
+              >
+                Explore Collections
+              </Button>
+              <Button
+                component={Link}
+                href="/track"
+                variant="outlined"
+                size="large"
+                sx={{
+                  fontWeight: 700,
+                  color: "common.white",
+                  borderColor: alpha("#ffffff", 0.5),
+                  "&:hover": {
+                    borderColor: "common.white",
+                    backgroundColor: alpha("#ffffff", 0.08),
+                  },
+                }}
+              >
+                Track Existing Order
+              </Button>
+            </Stack>
           </Stack>
         </Container>
       </Box>
 
-      {/* Main Content */}
-      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 7 } }}>
         {!isSupabaseConfigured() ? <SupabaseConfigAlert /> : null}
 
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 2,
-            mb: 12,
-          }}
-        >
-          {/* Filter Card */}
-          <Card
-            variant="outlined"
+        <Stack spacing={5}>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 800, mb: 1.2 }}>
+              Why Teams Choose Boudokhane
+            </Typography>
+            <Typography color="text.secondary" sx={{ maxWidth: 820 }}>
+              We combine manufacturing discipline with a practical ordering
+              system so architects, contractors, and homeowners can move from
+              concept to delivery without friction.
+            </Typography>
+          </Box>
+
+          <Box
             sx={{
-              gridColumn: { xs: "1 / -1", md: "1 / 2" },
-              borderColor: "var(--outline-variant)",
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: {
+                xs: "1fr",
+                md: "repeat(3, minmax(0, 1fr))",
+              },
             }}
           >
-            <CardContent>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: '"Manrope", sans-serif',
-                  fontWeight: 700,
-                  mb: 3,
-                  fontSize: "0.875rem",
-                  letterSpacing: "0.05em",
-                  textTransform: "uppercase",
-                  color: "var(--on-surface-variant)",
-                }}
+            {VALUE_ITEMS.map((item) => (
+              <Card
+                key={item.title}
+                variant="outlined"
+                sx={{ borderColor: "divider" }}
               >
-                Filter by Category
-              </Typography>
-              <TextField
-                select
-                label="Category"
-                value={categoryFilter}
-                onChange={(event) => setCategoryFilter(event.target.value)}
-                fullWidth
-                size="small"
-                slotProps={{
-                  select: {
-                    MenuProps: {
-                      sx: {
-                        "& .MuiMenuItem-root": {
-                          fontFamily: '"Inter", sans-serif',
-                        },
-                      },
-                    },
-                  },
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <FilterListIcon sx={{ fontSize: "1.25rem" }} />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              >
-                <MenuItem value="all">All categories</MenuItem>
-                {categories.map((category) => (
-                  <MenuItem key={category.id} value={category.id}>
-                    {category.name}
-                  </MenuItem>
-                ))}
-              </TextField>
+                <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
+                  <Stack spacing={1.3}>
+                    <Box sx={{ color: "primary.main", lineHeight: 1 }}>
+                      {item.icon}
+                    </Box>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 700, fontSize: "1.05rem" }}
+                    >
+                      {item.title}
+                    </Typography>
+                    <Typography
+                      color="text.secondary"
+                      sx={{ fontSize: "0.92rem" }}
+                    >
+                      {item.description}
+                    </Typography>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
 
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: '"Manrope", sans-serif',
-                  fontWeight: 700,
-                  mt: 4,
-                  mb: 2,
-                  fontSize: "0.875rem",
-                  letterSpacing: "0.05em",
-                  textTransform: "uppercase",
-                  color: "var(--on-surface-variant)",
-                }}
-              >
-                Price Range
-              </Typography>
-              <Stack spacing={1.5}>
-                <TextField
-                  label="Min price"
-                  type="number"
-                  value={minPriceFilter}
-                  onChange={(event) => setMinPriceFilter(event.target.value)}
-                  size="small"
-                  fullWidth
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <AttachMoneyIcon sx={{ fontSize: "1.25rem" }} />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                />
-                <TextField
-                  label="Max price"
-                  type="number"
-                  value={maxPriceFilter}
-                  onChange={(event) => setMaxPriceFilter(event.target.value)}
-                  size="small"
-                  fullWidth
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <AttachMoneyIcon sx={{ fontSize: "1.25rem" }} />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                />
-              </Stack>
-            </CardContent>
-          </Card>
-
-          {/* Main Catalog Area */}
-          <Box sx={{ gridColumn: { xs: "1 / -1", md: "2 / -1" } }} id="catalog">
-            <Box sx={{ mb: 4 }}>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontFamily: '"Manrope", sans-serif',
-                  fontWeight: 800,
-                  letterSpacing: "-0.01em",
-                  mb: 1,
-                }}
-              >
-                Current Selection
-              </Typography>
-              <Typography color="textSecondary" sx={{ fontSize: "0.875rem" }}>
-                Showing {filteredProducts.length} precision-crafted entries
-              </Typography>
-            </Box>
+          <Box>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              justifyContent="space-between"
+              spacing={1}
+              sx={{ mb: 2.2 }}
+            >
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.6 }}>
+                  Most Ordered Highlights
+                </Typography>
+                <Typography color="text.secondary">
+                  A quick look at the products customers currently choose most.
+                </Typography>
+              </Box>
+              <Button component={Link} href="/collections" variant="text">
+                View full catalog
+              </Button>
+            </Stack>
 
             {isLoading ? (
               <Box
-                sx={{
-                  minHeight: 400,
-                  display: "grid",
-                  placeItems: "center",
-                }}
+                sx={{ minHeight: 260, display: "grid", placeItems: "center" }}
               >
                 <CircularProgress />
               </Box>
@@ -370,101 +283,22 @@ export default function HomePage() {
               <Box
                 sx={{
                   display: "grid",
-                  gap: 4,
+                  gap: { xs: 2.5, md: 3.25 },
                   gridTemplateColumns: {
                     xs: "1fr",
                     sm: "repeat(2, minmax(0, 1fr))",
+                    md: "repeat(3, minmax(0, 1fr))",
+                    xl: "repeat(4, minmax(0, 1fr))",
                   },
                 }}
               >
-                {filteredProducts.map((product) => (
-                  <Card
-                    key={product.id}
-                    variant="outlined"
-                    component={Link}
-                    href={`/products/${product.id}`}
-                    sx={{
-                      textDecoration: "none",
-                      color: "inherit",
-                      borderColor: "var(--outline-variant)",
-                      transition: "all 0.3s ease",
-                      cursor: "pointer",
-                      "&:hover": {
-                        boxShadow: 2,
-                        borderColor: "var(--primary)",
-                        transform: "translateY(-4px)",
-                      },
-                    }}
-                  >
-                    <ProductImageCarousel
-                      images={product.door_product_images ?? []}
-                      height={250}
-                    />
-                    <CardContent>
-                      <Stack spacing={1.2}>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontFamily: '"Manrope", sans-serif',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {product.name}
-                        </Typography>
-                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                          <Chip
-                            label={
-                              product.door_categories?.name ?? "Uncategorized"
-                            }
-                            size="small"
-                            variant="outlined"
-                          />
-                          <Chip
-                            label={`${minDeliveryLabel(product)} lead time`}
-                            size="small"
-                            variant="outlined"
-                          />
-                        </Stack>
-                        <Box
-                          sx={{
-                            pt: 2,
-                            borderTop: "1px solid",
-                            borderColor: "var(--outline-variant)",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "baseline",
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              fontFamily: '"Manrope", sans-serif',
-                              fontWeight: 700,
-                              fontSize: "1rem",
-                            }}
-                          >
-                            From {formatMoney(product.base_price)}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: "var(--tertiary-dim)",
-                              fontWeight: 600,
-                              fontSize: "0.75rem",
-                              letterSpacing: "0.05em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            {minDeliveryLabel(product)}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                    </CardContent>
-                  </Card>
+                {highlights.map((product) => (
+                  <CatalogProductCard key={product.id} product={product} />
                 ))}
               </Box>
             ) : null}
           </Box>
-        </Box>
+        </Stack>
       </Container>
     </Box>
   );

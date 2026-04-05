@@ -1,9 +1,11 @@
 "use client";
 
 import { CssBaseline, type PaletteMode, ThemeProvider } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import type React from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { darkTheme, lightTheme } from "./theme";
+import { applyMuiThemeToCssVars } from "./theme-css-bridge";
 
 type ColorModeContextType = {
   mode: PaletteMode;
@@ -22,6 +24,16 @@ export const useColorMode = () => {
   return context;
 };
 
+function ThemeCssVarSync({ children }: { children: React.ReactNode }) {
+  const theme = useTheme();
+
+  useEffect(() => {
+    applyMuiThemeToCssVars(theme);
+  }, [theme]);
+
+  return <>{children}</>;
+}
+
 export default function AppThemeProvider({
   children,
 }: {
@@ -29,7 +41,6 @@ export default function AppThemeProvider({
 }) {
   const [mode, setMode] = useState<PaletteMode>("light");
 
-  // Prime initial mode from localStorage or system preference (client-side only)
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -52,27 +63,17 @@ export default function AppThemeProvider({
       return;
     }
 
-    // Persist user choice and sync global CSS color vars, so non-MUI elements also follow app mode.
     window.localStorage.setItem("color-mode", mode);
-
-    const root = document.documentElement;
-    if (mode === "dark") {
-      root.style.setProperty("--background", "#0b1a2b");
-      root.style.setProperty("--foreground", "#e6f1ff");
-    } else {
-      root.style.setProperty("--background", "#eef5ff");
-      root.style.setProperty("--foreground", "#0f2a43");
-    }
+    document.documentElement.classList.toggle("dark", mode === "dark");
+    document.documentElement.style.colorScheme =
+      mode === "dark" ? "dark" : "light";
   }, [mode]);
 
   const colorMode = useMemo(
     () => ({
       mode,
       toggleColorMode: () => {
-        setMode((prev) => {
-          const next = prev === "light" ? "dark" : "light";
-          return next;
-        });
+        setMode((prev) => (prev === "light" ? "dark" : "light"));
       },
     }),
     [mode],
@@ -84,7 +85,7 @@ export default function AppThemeProvider({
     <ColorModeContext.Provider value={colorMode as ColorModeContextType}>
       <ThemeProvider theme={appliedTheme}>
         <CssBaseline />
-        {children}
+        <ThemeCssVarSync>{children}</ThemeCssVarSync>
       </ThemeProvider>
     </ColorModeContext.Provider>
   );

@@ -16,9 +16,16 @@ import {
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SupabaseConfigAlert from "@/components/supabase-config-alert";
-import { fetchAnalyticsOrders } from "@/services/admin/analytics.service";
+import {
+  fetchAnalyticsCatalogSummary,
+  fetchAnalyticsOrders,
+} from "@/services/admin/analytics.service";
 import { isSupabaseConfigured } from "@/services/supabase/client";
-import type { AnalyticsOrder, ProductAggregate } from "@/types/admin";
+import type {
+  AnalyticsCatalogSummary,
+  AnalyticsOrder,
+  ProductAggregate,
+} from "@/types/admin";
 import type { OrderStatus } from "@/types/database";
 import { formatMoney } from "@/utils/formatters";
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "@/utils/order-status";
@@ -26,6 +33,8 @@ import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "@/utils/order-status";
 export default function AdminAnalyticsPage() {
   const supabaseConfigured = isSupabaseConfigured();
   const [orders, setOrders] = useState<AnalyticsOrder[]>([]);
+  const [catalogSummary, setCatalogSummary] =
+    useState<AnalyticsCatalogSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -38,14 +47,25 @@ export default function AdminAnalyticsPage() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const result = await fetchAnalyticsOrders();
-    if (result.error) {
-      setErrorMessage(result.error);
+    const [ordersResult, catalogResult] = await Promise.all([
+      fetchAnalyticsOrders(),
+      fetchAnalyticsCatalogSummary(),
+    ]);
+
+    if (ordersResult.error) {
+      setErrorMessage(ordersResult.error);
       setIsLoading(false);
       return;
     }
 
-    setOrders(result.data ?? []);
+    if (catalogResult.error) {
+      setErrorMessage(catalogResult.error);
+      setIsLoading(false);
+      return;
+    }
+
+    setOrders(ordersResult.data ?? []);
+    setCatalogSummary(catalogResult.data ?? null);
     setIsLoading(false);
   }, [supabaseConfigured]);
 
@@ -63,6 +83,7 @@ export default function AdminAnalyticsPage() {
       constructing: 0,
       delivering: 0,
       delivered: 0,
+      rejected: 0,
     };
     const productMap = new Map<string, ProductAggregate>();
 
@@ -92,10 +113,24 @@ export default function AdminAnalyticsPage() {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 8);
 
+    const incomingOrders = statusBreakdown.received + statusBreakdown.confirmed;
+    const activeOrders =
+      statusBreakdown.constructing + statusBreakdown.delivering;
+    const completionRate =
+      totalOrders > 0
+        ? Math.round((statusBreakdown.delivered / totalOrders) * 100)
+        : 0;
+    const averageOrderValue =
+      totalOrders > 0 ? totalRevenue / totalOrders : totalRevenue;
+
     return {
       totalOrders,
       totalUnits,
       totalRevenue,
+      incomingOrders,
+      activeOrders,
+      completionRate,
+      averageOrderValue,
       statusBreakdown,
       topProducts,
     };
@@ -164,7 +199,7 @@ export default function AdminAnalyticsPage() {
         <Stack spacing={4}>
           {/* KPI Grid */}
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
               <Card
                 variant="outlined"
                 sx={{
@@ -218,7 +253,7 @@ export default function AdminAnalyticsPage() {
               </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
               <Card
                 variant="outlined"
                 sx={{
@@ -262,7 +297,7 @@ export default function AdminAnalyticsPage() {
               </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
               <Card
                 variant="outlined"
                 sx={{
@@ -292,8 +327,7 @@ export default function AdminAnalyticsPage() {
                       color: "var(--warning)",
                     }}
                   >
-                    {totals.statusBreakdown.constructing +
-                      totals.statusBreakdown.delivering}
+                    {totals.activeOrders}
                   </Typography>
                   <Typography
                     variant="caption"
@@ -307,7 +341,7 @@ export default function AdminAnalyticsPage() {
               </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
               <Card
                 variant="outlined"
                 sx={{
@@ -337,14 +371,7 @@ export default function AdminAnalyticsPage() {
                       color: "var(--success)",
                     }}
                   >
-                    {totals.totalOrders > 0
-                      ? Math.round(
-                          (totals.statusBreakdown.delivered /
-                            totals.totalOrders) *
-                            100,
-                        )
-                      : 0}
-                    %
+                    {totals.completionRate}%
                   </Typography>
                   <Typography
                     variant="caption"
@@ -357,7 +384,120 @@ export default function AdminAnalyticsPage() {
                 </CardContent>
               </Card>
             </Grid>
+
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+              <Card
+                variant="outlined"
+                sx={{
+                  borderColor: "var(--outline-variant)",
+                  backgroundColor: "var(--surface-container-low)",
+                }}
+              >
+                <CardContent>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    Incoming
+                  </Typography>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontFamily: '"Manrope", sans-serif',
+                      fontWeight: 800,
+                      my: 1.5,
+                      color: "var(--warning)",
+                    }}
+                  >
+                    {totals.incomingOrders}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    Received or confirmed
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+              <Card
+                variant="outlined"
+                sx={{
+                  borderColor: "var(--outline-variant)",
+                  backgroundColor: "var(--surface-container-low)",
+                }}
+              >
+                <CardContent>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    Catalog Stock
+                  </Typography>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontFamily: '"Manrope", sans-serif',
+                      fontWeight: 800,
+                      my: 1.5,
+                      color: "var(--primary)",
+                    }}
+                  >
+                    {catalogSummary?.activeProducts ?? 0}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "var(--on-surface-variant)",
+                    }}
+                  >
+                    Active / total: {catalogSummary?.activeProducts ?? 0}/
+                    {catalogSummary?.totalProducts ?? 0}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
+
+          <Card
+            variant="outlined"
+            sx={{ borderColor: "var(--outline-variant)" }}
+          >
+            <CardContent>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2}
+                justifyContent="space-between"
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Average order value: {formatMoney(totals.averageOrderValue)}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Rejected orders: {totals.statusBreakdown.rejected}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Categories: {catalogSummary?.activeCategories ?? 0}/
+                  {catalogSummary?.totalCategories ?? 0} active
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
 
           {/* Status Breakdown */}
           <Card
@@ -392,6 +532,7 @@ export default function AdminAnalyticsPage() {
                     statusColor = "var(--tertiary)";
                   if (status === "delivering") statusColor = "var(--warning)";
                   if (status === "delivered") statusColor = "var(--success)";
+                  if (status === "rejected") statusColor = "var(--error)";
 
                   return (
                     <Box key={status}>

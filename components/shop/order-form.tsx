@@ -46,6 +46,27 @@ function initialWantedDate() {
   return date.toISOString().slice(0, 10);
 }
 
+function parsePositiveNumberFromInput(value: string, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+function parsePositiveIntegerFromInput(
+  value: string,
+  fallback: number,
+): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return Math.max(1, Math.floor(parsed));
+}
+
 export default function OrderForm({ product }: { product: CatalogProduct }) {
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -121,33 +142,68 @@ export default function OrderForm({ product }: { product: CatalogProduct }) {
 
     if (!isSupabaseConfigured()) {
       setErrorMessage(
-        "Supabase keys are missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+        "ERR_SUPABASE_CONFIG_MISSING: Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
       );
       return;
     }
 
     if (!fullName.trim() || !phoneNumber.trim() || !deliveryLocation.trim()) {
-      setErrorMessage("Please fill all required customer fields.");
+      setErrorMessage(
+        "ERR_ORDER_CUSTOMER_REQUIRED: Provide customer name, phone, and delivery location.",
+      );
+      return;
+    }
+
+    const wantedDateValue = wantedDate.trim();
+    const parsedWantedDate = new Date(`${wantedDateValue}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (Number.isNaN(parsedWantedDate.getTime())) {
+      setErrorMessage(
+        "ERR_ORDER_WANTED_DATE_INVALID: Wanted date must be a valid date.",
+      );
+      return;
+    }
+
+    if (parsedWantedDate < today) {
+      setErrorMessage(
+        "ERR_ORDER_WANTED_DATE_PAST: Wanted date must be today or later.",
+      );
+      return;
+    }
+
+    if (!lines.length) {
+      setErrorMessage(
+        "ERR_ORDER_ITEMS_REQUIRED: Add at least one item line before submitting.",
+      );
       return;
     }
 
     if (
       lines.some(
         (line) =>
-          line.quantity <= 0 || line.height_cm <= 0 || line.width_cm <= 0,
+          !Number.isFinite(line.quantity) ||
+          !Number.isFinite(line.height_cm) ||
+          !Number.isFinite(line.width_cm) ||
+          line.quantity <= 0 ||
+          line.height_cm <= 0 ||
+          line.width_cm <= 0,
       )
     ) {
-      setErrorMessage("All quantities and dimensions must be positive.");
+      setErrorMessage(
+        "ERR_ORDER_ITEMS_INVALID: All quantities and dimensions must be positive.",
+      );
       return;
     }
 
     setIsSubmitting(true);
     const result = await createPublicOrder({
-      fullName,
-      phoneNumber,
-      deliveryLocation,
-      customerNote: customerNote || null,
-      wantedDate,
+      fullName: fullName.trim(),
+      phoneNumber: phoneNumber.trim(),
+      deliveryLocation: deliveryLocation.trim(),
+      customerNote: customerNote.trim() || null,
+      wantedDate: wantedDateValue,
       items: lines.map((line) => ({
         product_id: product.id,
         quantity: line.quantity,
@@ -164,7 +220,9 @@ export default function OrderForm({ product }: { product: CatalogProduct }) {
     }
 
     if (!result.data) {
-      setErrorMessage("Order response is empty.");
+      setErrorMessage(
+        "ERR_ORDER_RESPONSE_EMPTY: Order was created but response is empty.",
+      );
       return;
     }
 
@@ -199,7 +257,6 @@ export default function OrderForm({ product }: { product: CatalogProduct }) {
           <Stack spacing={2}>
             <TextField
               label="Full Name"
-              required
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
               size="small"
@@ -216,7 +273,6 @@ export default function OrderForm({ product }: { product: CatalogProduct }) {
             />
             <TextField
               label="Phone Number"
-              required
               value={phoneNumber}
               onChange={(event) => setPhoneNumber(event.target.value)}
               size="small"
@@ -233,7 +289,6 @@ export default function OrderForm({ product }: { product: CatalogProduct }) {
             />
             <TextField
               label="Delivery Location"
-              required
               value={deliveryLocation}
               onChange={(event) => setDeliveryLocation(event.target.value)}
               size="small"
@@ -251,7 +306,6 @@ export default function OrderForm({ product }: { product: CatalogProduct }) {
             <TextField
               label="Wanted Date"
               type="date"
-              required
               value={wantedDate}
               onChange={(event) => setWantedDate(event.target.value)}
               size="small"
@@ -365,7 +419,10 @@ export default function OrderForm({ product }: { product: CatalogProduct }) {
                             updateLine(
                               line.id,
                               "height_cm",
-                              Math.max(1, Number(event.target.value)),
+                              parsePositiveNumberFromInput(
+                                event.target.value,
+                                line.height_cm,
+                              ),
                             )
                           }
                           size="small"
@@ -396,7 +453,10 @@ export default function OrderForm({ product }: { product: CatalogProduct }) {
                             updateLine(
                               line.id,
                               "width_cm",
-                              Math.max(1, Number(event.target.value)),
+                              parsePositiveNumberFromInput(
+                                event.target.value,
+                                line.width_cm,
+                              ),
                             )
                           }
                           size="small"
@@ -454,7 +514,10 @@ export default function OrderForm({ product }: { product: CatalogProduct }) {
                               updateLine(
                                 line.id,
                                 "quantity",
-                                Math.max(1, Number(event.target.value)),
+                                parsePositiveIntegerFromInput(
+                                  event.target.value,
+                                  line.quantity,
+                                ),
                               )
                             }
                             variant="standard"
@@ -600,7 +663,9 @@ export default function OrderForm({ product }: { product: CatalogProduct }) {
         {trackingToken && (
           <Alert severity="success">
             Order submitted successfully! Track it here:{" "}
-            <Link href={`/track/${trackingToken}`}>/track/{trackingToken}</Link>
+            <Link href={`/track/${encodeURIComponent(trackingToken)}`}>
+              /track/{trackingToken}
+            </Link>
           </Alert>
         )}
 

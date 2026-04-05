@@ -15,6 +15,8 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+const TRACKING_TOKEN_PATTERN = /^[a-z0-9_-]{6,128}$/i;
+
 export default function TrackLookupPage() {
   const router = useRouter();
   const [token, setToken] = useState("");
@@ -26,11 +28,18 @@ export default function TrackLookupPage() {
 
     const trimmed = token.trim().toLowerCase();
     if (!trimmed) {
-      setErrorMessage("Please enter your tracking token.");
+      setErrorMessage("ERR_TRACK_TOKEN_REQUIRED: Enter your tracking token.");
       return;
     }
 
-    router.push(`/track/${trimmed}`);
+    if (!TRACKING_TOKEN_PATTERN.test(trimmed)) {
+      setErrorMessage(
+        "ERR_TRACK_TOKEN_INVALID: Tracking token format looks invalid.",
+      );
+      return;
+    }
+
+    router.push(`/track/${encodeURIComponent(trimmed)}`);
   }
 
   return (

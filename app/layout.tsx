@@ -17,12 +17,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-screen" suppressHydrationWarning>
-      <body className="min-h-full flex flex-col">
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col">
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <AppThemeProvider>
             <SiteHeader />
-            <main style={{ flex: 1, paddingTop: "64px" }}>{children}</main>
+            <main className="flex-1 pt-16 overflow-x-hidden">{children}</main>
             <SiteFooter />
           </AppThemeProvider>
         </AppRouterCacheProvider>

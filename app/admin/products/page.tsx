@@ -18,6 +18,11 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   InputAdornment,
   MenuItem,
   Stack,
@@ -25,27 +30,20 @@ import {
   Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
+import CatalogProductRow from "@/components/admin/catalog-product-row";
+import EditProductDialog from "@/components/admin/edit-product-dialog";
 import SupabaseConfigAlert from "@/components/supabase-config-alert";
 import {
   createDoorCategory,
   createDoorProductWithTiers,
+  deleteDoorProduct,
   fetchAdminCatalogData,
   uploadDoorProductImages,
 } from "@/services/admin/products.service";
 import { isSupabaseConfigured } from "@/services/supabase/client";
-import type {
-  CatalogProduct,
-  DoorCategory,
-  DoorDeliveryTier,
-} from "@/types/domain";
-import { formatMoney, toSlug } from "@/utils/formatters";
-
-interface TierDraft {
-  id: number;
-  min_quantity: number;
-  max_quantity: number | null;
-  delivery_days: number;
-}
+import type { TierDraft } from "@/types/admin";
+import type { CatalogProduct, DoorCategory } from "@/types/domain";
+import { toSlug } from "@/utils/formatters";
 
 function createTierDraft(id: number): TierDraft {
   return {
@@ -54,6 +52,27 @@ function createTierDraft(id: number): TierDraft {
     max_quantity: null,
     delivery_days: 7,
   };
+}
+
+function parsePositiveIntegerFromInput(
+  value: string,
+  fallback: number,
+): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return Math.max(1, Math.floor(parsed));
+}
+
+function parseNonNegativeNumber(value: string): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
 }
 
 export default function AdminProductsPage() {
@@ -81,6 +100,13 @@ export default function AdminProductsPage() {
   const [productImageFiles, setProductImageFiles] = useState<File[]>([]);
   const [tiers, setTiers] = useState<TierDraft[]>([createTierDraft(1)]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [editProduct, setEditProduct] = useState<CatalogProduct | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CatalogProduct | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [activeSection, setActiveSection] = useState<
+    "category" | "product" | "catalog"
+  >("category");
 
   const loadData = useCallback(async () => {
     if (!supabaseConfigured) {
@@ -123,10 +149,20 @@ export default function AdminProductsPage() {
 
     if (!supabaseConfigured) return;
 
-    setIsSubmitting(true);
+    const trimmedName = categoryName.trim();
     const normalizedSlug = toSlug(categorySlug || categoryName);
+    if (!trimmedName) {
+      setErrorMessage("ERR_CATEGORY_NAME_REQUIRED: Category name is required.");
+      return;
+    }
+    if (!normalizedSlug) {
+      setErrorMessage("ERR_CATEGORY_SLUG_REQUIRED: Category slug is required.");
+      return;
+    }
+
+    setIsSubmitting(true);
     const result = await createDoorCategory({
-      name: categoryName.trim(),
+      name: trimmedName,
       slug: normalizedSlug,
       description: categoryDescription.trim() || null,
     });
@@ -182,22 +218,54 @@ export default function AdminProductsPage() {
 
     if (!supabaseConfigured) return;
     if (!productCategoryId) {
-      setErrorMessage("Please create/select a category first.");
+      setErrorMessage(
+        "ERR_PRODUCT_CATEGORY_REQUIRED: Select a category first.",
+      );
+      return;
+    }
+
+    const trimmedName = productName.trim();
+    const normalizedSlug = toSlug(productSlug || productName);
+    if (!trimmedName) {
+      setErrorMessage("ERR_PRODUCT_NAME_REQUIRED: Product name is required.");
+      return;
+    }
+    if (!normalizedSlug) {
+      setErrorMessage("ERR_PRODUCT_SLUG_REQUIRED: Product slug is required.");
+      return;
+    }
+
+    const parsedBasePrice = parseNonNegativeNumber(basePrice);
+    const parsedBaseHeight = parseNonNegativeNumber(baseHeightCm);
+    const parsedBaseWidth = parseNonNegativeNumber(baseWidthCm);
+    const parsedExtraHeight = parseNonNegativeNumber(extraHeightPrice);
+    const parsedExtraWidth = parseNonNegativeNumber(extraWidthPrice);
+    if (
+      parsedBasePrice === null ||
+      parsedBaseHeight === null ||
+      parsedBaseWidth === null ||
+      parsedExtraHeight === null ||
+      parsedExtraWidth === null ||
+      parsedBaseHeight === 0 ||
+      parsedBaseWidth === 0
+    ) {
+      setErrorMessage(
+        "ERR_PRODUCT_NUMERIC_FIELDS_INVALID: Check pricing and dimensions.",
+      );
       return;
     }
 
     setIsSubmitting(true);
-    const normalizedSlug = toSlug(productSlug || productName);
     const result = await createDoorProductWithTiers({
       category_id: productCategoryId,
-      name: productName.trim(),
+      name: trimmedName,
       slug: normalizedSlug,
       description: productDescription.trim() || null,
-      base_price: Number(basePrice),
-      base_height_cm: Number(baseHeightCm),
-      base_width_cm: Number(baseWidthCm),
-      price_per_extra_cm_height: Number(extraHeightPrice),
-      price_per_extra_cm_width: Number(extraWidthPrice),
+      base_price: parsedBasePrice,
+      base_height_cm: parsedBaseHeight,
+      base_width_cm: parsedBaseWidth,
+      price_per_extra_cm_height: parsedExtraHeight,
+      price_per_extra_cm_width: parsedExtraWidth,
       thumbnail_url: null,
       delivery_tiers: tiers.map((tier) => ({
         min_quantity: tier.min_quantity,
@@ -252,6 +320,29 @@ export default function AdminProductsPage() {
     await loadData();
   }
 
+  async function confirmDeleteProduct() {
+    if (!deleteTarget || !supabaseConfigured) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setDeleteSubmitting(true);
+
+    const result = await deleteDoorProduct(deleteTarget.id);
+    setDeleteSubmitting(false);
+
+    if (result.error) {
+      setErrorMessage(result.error);
+      setDeleteTarget(null);
+      return;
+    }
+
+    setSuccessMessage(`"${deleteTarget.name}" was deleted.`);
+    setDeleteTarget(null);
+    await loadData();
+  }
+
   return (
     <>
       {!supabaseConfigured ? <SupabaseConfigAlert /> : null}
@@ -292,6 +383,34 @@ export default function AdminProductsPage() {
         </Alert>
       ) : null}
 
+      {!isLoading ? (
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          sx={{ mb: 3 }}
+          useFlexGap
+        >
+          <Button
+            variant={activeSection === "category" ? "contained" : "outlined"}
+            onClick={() => setActiveSection("category")}
+          >
+            Create Category
+          </Button>
+          <Button
+            variant={activeSection === "product" ? "contained" : "outlined"}
+            onClick={() => setActiveSection("product")}
+          >
+            Add Product
+          </Button>
+          <Button
+            variant={activeSection === "catalog" ? "contained" : "outlined"}
+            onClick={() => setActiveSection("catalog")}
+          >
+            Catalog
+          </Button>
+        </Stack>
+      ) : null}
+
       {isLoading ? (
         <Box
           sx={{
@@ -310,7 +429,10 @@ export default function AdminProductsPage() {
           {/* Category Section */}
           <Card
             variant="outlined"
-            sx={{ borderColor: "var(--outline-variant)" }}
+            sx={{
+              borderColor: "var(--outline-variant)",
+              display: activeSection === "category" ? "block" : "none",
+            }}
           >
             <CardContent>
               <Stack
@@ -360,7 +482,6 @@ export default function AdminProductsPage() {
                         setCategorySlug(toSlug(value));
                       }
                     }}
-                    required
                     size="small"
                     variant="outlined"
                     slotProps={{
@@ -379,7 +500,6 @@ export default function AdminProductsPage() {
                     onChange={(event) =>
                       setCategorySlug(toSlug(event.target.value))
                     }
-                    required
                     size="small"
                     variant="outlined"
                     slotProps={{
@@ -427,7 +547,10 @@ export default function AdminProductsPage() {
           {/* Product Section */}
           <Card
             variant="outlined"
-            sx={{ borderColor: "var(--outline-variant)" }}
+            sx={{
+              borderColor: "var(--outline-variant)",
+              display: activeSection === "product" ? "block" : "none",
+            }}
           >
             <CardContent>
               <Stack
@@ -476,7 +599,6 @@ export default function AdminProductsPage() {
                     onChange={(event) =>
                       setProductCategoryId(event.target.value)
                     }
-                    required
                     size="small"
                     variant="outlined"
                   >
@@ -496,7 +618,6 @@ export default function AdminProductsPage() {
                         setProductSlug(toSlug(value));
                       }
                     }}
-                    required
                     size="small"
                     variant="outlined"
                     slotProps={{
@@ -515,7 +636,6 @@ export default function AdminProductsPage() {
                     onChange={(event) =>
                       setProductSlug(toSlug(event.target.value))
                     }
-                    required
                     size="small"
                     variant="outlined"
                     slotProps={{
@@ -560,7 +680,6 @@ export default function AdminProductsPage() {
                       type="number"
                       value={basePrice}
                       onChange={(event) => setBasePrice(event.target.value)}
-                      required
                       size="small"
                       variant="outlined"
                       slotProps={{
@@ -580,7 +699,6 @@ export default function AdminProductsPage() {
                       onChange={(event) =>
                         setExtraHeightPrice(event.target.value)
                       }
-                      required
                       size="small"
                       variant="outlined"
                       slotProps={{
@@ -600,7 +718,6 @@ export default function AdminProductsPage() {
                       onChange={(event) =>
                         setExtraWidthPrice(event.target.value)
                       }
-                      required
                       size="small"
                       variant="outlined"
                       slotProps={{
@@ -646,7 +763,6 @@ export default function AdminProductsPage() {
                       type="number"
                       value={baseHeightCm}
                       onChange={(event) => setBaseHeightCm(event.target.value)}
-                      required
                       size="small"
                       variant="outlined"
                       slotProps={{
@@ -664,7 +780,6 @@ export default function AdminProductsPage() {
                       type="number"
                       value={baseWidthCm}
                       onChange={(event) => setBaseWidthCm(event.target.value)}
-                      required
                       size="small"
                       variant="outlined"
                       slotProps={{
@@ -791,6 +906,7 @@ export default function AdminProductsPage() {
                       </Typography>
                     </Box>
                     <Button
+                      type="button"
                       startIcon={<AddIcon />}
                       size="small"
                       variant="text"
@@ -831,7 +947,10 @@ export default function AdminProductsPage() {
                             updateTier(
                               tier.id,
                               "min_quantity",
-                              Math.max(1, Number(event.target.value)),
+                              parsePositiveIntegerFromInput(
+                                event.target.value,
+                                tier.min_quantity,
+                              ),
                             )
                           }
                           size="small"
@@ -858,7 +977,10 @@ export default function AdminProductsPage() {
                               "max_quantity",
                               event.target.value === ""
                                 ? null
-                                : Math.max(1, Number(event.target.value)),
+                                : parsePositiveIntegerFromInput(
+                                    event.target.value,
+                                    tier.max_quantity ?? tier.min_quantity,
+                                  ),
                             )
                           }
                           size="small"
@@ -883,7 +1005,10 @@ export default function AdminProductsPage() {
                             updateTier(
                               tier.id,
                               "delivery_days",
-                              Math.max(1, Number(event.target.value)),
+                              parsePositiveIntegerFromInput(
+                                event.target.value,
+                                tier.delivery_days,
+                              ),
                             )
                           }
                           size="small"
@@ -901,6 +1026,7 @@ export default function AdminProductsPage() {
                           }}
                         />
                         <Button
+                          type="button"
                           color="error"
                           onClick={() =>
                             setTiers((prev) =>
@@ -935,95 +1061,35 @@ export default function AdminProductsPage() {
           {/* Existing Products Section */}
           <Card
             variant="outlined"
-            sx={{ borderColor: "var(--outline-variant)" }}
+            sx={{
+              borderColor: "divider",
+              display: activeSection === "catalog" ? "block" : "none",
+            }}
           >
             <CardContent>
               <Typography
                 variant="h6"
                 sx={{
-                  fontFamily: '"Manrope", sans-serif',
+                  fontFamily: (theme) => theme.typography.h6.fontFamily,
                   fontWeight: 700,
                   mb: 2,
                 }}
               >
-                Existing Products ({products.length})
+                Catalog ({products.length})
               </Typography>
               <Stack spacing={2}>
                 {products.length === 0 ? (
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "var(--on-surface-variant)" }}
-                  >
+                  <Typography variant="body2" color="text.secondary">
                     No products created yet.
                   </Typography>
                 ) : (
                   products.map((product) => (
-                    <Box
+                    <CatalogProductRow
                       key={product.id}
-                      sx={{
-                        border: "1px solid",
-                        borderColor: "var(--outline-variant)",
-                        borderRadius: "0.5rem",
-                        p: 2,
-                        backgroundColor: "var(--surface-container-lowest)",
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontWeight: 700,
-                          color: "var(--on-surface)",
-                          mb: 0.5,
-                        }}
-                      >
-                        {product.name}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "var(--on-surface-variant)",
-                          display: "block",
-                          mb: 1,
-                        }}
-                      >
-                        {product.slug}
-                      </Typography>
-                      <Stack spacing={0.75}>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontSize: "0.8125rem" }}
-                        >
-                          Category: {product.door_categories?.name ?? "Unknown"}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontSize: "0.8125rem" }}
-                        >
-                          Base: {formatMoney(product.base_price)} at{" "}
-                          {product.base_height_cm}cm × {product.base_width_cm}cm
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontSize: "0.8125rem" }}
-                        >
-                          Extra:{" "}
-                          {formatMoney(product.price_per_extra_cm_height)}/cm
-                          (H), {formatMoney(product.price_per_extra_cm_width)}
-                          /cm (W)
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontSize: "0.8125rem",
-                            color: "var(--on-surface-variant)",
-                          }}
-                        >
-                          Images: {product.door_product_images?.length ?? 0} |
-                          Delivery tiers:{" "}
-                          {(product.door_delivery_tiers as DoorDeliveryTier[])
-                            ?.length ?? 0}
-                        </Typography>
-                      </Stack>
-                    </Box>
+                      product={product}
+                      onEdit={(p) => setEditProduct(p)}
+                      onDelete={(p) => setDeleteTarget(p)}
+                    />
                   ))
                 )}
               </Stack>
@@ -1031,6 +1097,48 @@ export default function AdminProductsPage() {
           </Card>
         </Stack>
       )}
+
+      <EditProductDialog
+        open={Boolean(editProduct)}
+        product={editProduct}
+        categories={categories}
+        onClose={() => setEditProduct(null)}
+        onSaved={() => {
+          void loadData();
+          setSuccessMessage("Product updated.");
+        }}
+      />
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => (!deleteSubmitting ? setDeleteTarget(null) : undefined)}
+        aria-labelledby="delete-product-title"
+      >
+        <DialogTitle id="delete-product-title">Delete product?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deleteTarget
+              ? `This removes "${deleteTarget.name}" and its images from storage. Orders that reference this product can block deletion in some environments; if that happens, disable the product instead.`
+              : null}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteTarget(null)}
+            disabled={deleteSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleteSubmitting}
+            onClick={() => void confirmDeleteProduct()}
+          >
+            {deleteSubmitting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
