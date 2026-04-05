@@ -16,12 +16,12 @@ import {
   Typography,
 } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import SupabaseConfigAlert from "@/components/supabase-config-alert";
 import { signInAsAdmin } from "@/services/auth/admin-auth.service";
 import { isSupabaseConfigured } from "@/services/supabase/client";
 
-export default function AdminLoginPage() {
+function AdminLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -137,5 +137,13 @@ export default function AdminLoginPage() {
         </Card>
       </Stack>
     </Container>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminLoginContent />
+    </Suspense>
   );
 }

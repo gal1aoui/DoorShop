@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
-import SiteFooter from "@/components/site-footer";
-import SiteHeader from "@/components/site-header";
+import SiteFrame from "@/components/layout/site-frame";
 import AppThemeProvider from "./app-theme-provider";
 
 export const metadata: Metadata = {
@@ -21,9 +20,7 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col">
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <AppThemeProvider>
-            <SiteHeader />
-            <main className="flex-1 pt-16 overflow-x-hidden">{children}</main>
-            <SiteFooter />
+            <SiteFrame>{children}</SiteFrame>
           </AppThemeProvider>
         </AppRouterCacheProvider>
       </body>

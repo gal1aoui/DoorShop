@@ -5,6 +5,11 @@ import { usePathname } from "next/navigation";
 import AdminGuard from "@/components/admin/admin-guard";
 import AdminNav from "@/components/admin/admin-nav";
 
+const ADMIN_VIEWPORT_HEIGHT = {
+  xs: "calc(100dvh - 56px)",
+  sm: "calc(100dvh - 64px)",
+};
+
 export default function AdminShell({
   children,
 }: {
@@ -21,7 +26,9 @@ export default function AdminShell({
       <Box
         sx={{
           display: "flex",
-          minHeight: "100dvh",
+          minHeight: ADMIN_VIEWPORT_HEIGHT,
+          height: ADMIN_VIEWPORT_HEIGHT,
+          overflow: "hidden",
           bgcolor: "background.default",
         }}
       >
@@ -31,7 +38,8 @@ export default function AdminShell({
           sx={{
             flex: 1,
             minWidth: 0,
-            minHeight: "100dvh",
+            minHeight: 0,
+            height: "100%",
             overflowY: "auto",
             overflowX: "hidden",
             bgcolor: "background.default",
